@@ -77,19 +77,44 @@ Example: a researcher randomly selects 4 plots of land, applies a new fertilizer
 
 b) True replication    
 Is the smallest experimental unit to which a treatment is independently applied.   
-Example: a researcher randomly selects 4 plots of land, applies a different fertilizer (treatment) to each plot, and measures the yield of each plot. This is the case of a true replication because the researcher accounted for independent samples in each treatment.
+Example: a researcher randomly selects 4 plots of land, applies a different fertilizer (treatment) to each plot, and measures the yield of each plot. This is the case of a true replication because the researcher accounted for independent treatments for each group of samples.
 
 c) Experimental unit    
 Is the smallest entity that can be randomly assigned to a different treatment condition.   
-Example: if a researcher randomly selects 4 plots of land, applies a different fertilizer (treatment) to each plot, and measures the yield of each plot, then each plot would be a experimental unit, because in this case is the smallest entity in which you applied a different treatment in each of them.   
+Example: if a researcher randomly selects 4 plots of land, applies a different fertilizer (treatment) to each plot, and measures the yield of each plot, then each plot would be a experimental unit, because in this case is the smallest entity in which you would apply a different treatment.   
 
-d) Observational unit    
-
+d) Observational unit       
+Is the unit observed (measured) by the researcher in the study.    
+Example: if a researcher is studying the impact of a new fertilizer on the crop yield, the observational unit could be a group of plants.
 
 e) Dependent variable    
+It is the variable of interest being studied in the experiment, that might be affected by other variables (the independent variables).   
+Example: a researcher is studying how a fertilizer (a independent variable $X_1$) and the quantity of nitrogen in the soil (another independent variable $X_2$) affects the crop yield (the dependent variable $Y$).      
 
-6.  A researcher is interested in determining if there is a significant difference in yield between an experimental fertilizer and a control fertilizer. He collected data 
-on yield for 10 plots treated with the experimental fertilizer and 10 plots treated with the control fertilizer. The mean yield for the experimental fertilizer is 8 with a standard deviation of 2 and the mean yield for the control fertilizer is 7 with a standard deviation also 2. Determine the 95% confidence interval for the difference in means and interpret the results.
+6. A researcher is interested in determining if there is a significant difference in yield between an experimental fertilizer and a control fertilizer. He collected data 
+on yield for 10 plots treated with the experimental fertilizer and 10 plots treated with the control fertilizer. The mean yield for the experimental fertilizer is 8 with a standard deviation of 2 and the mean yield for the control fertilizer is 7 with a standard deviation also 2. Determine the 95% confidence interval for the difference in means and interpret the results.    
+
+We can use a t-statistic to build a confidence interval for the difference in means.   
+Denote $A$ as the experimental fertilizer and $B$ as the control fertilizer:
+```{r}
+xbar_A <- 8
+xbar_B <- 7
+s_A <- s_B <- 2
+n_A <- n_B <- 10
+
+# pooled estimate of the standard deviation is used because both s_B and s_B are equal
+sP <- sqrt((((n_A - 1) * s_A ^ 2) + ((n_B - 1) * s_B ^ 2)) / (n_A + n_B - 2))
+
+# standard error between difference of means
+se_diff <- sP * sqrt((1 / n_A) + (1 / n_B))
+
+# use the t-statistic with P(T <= alpha / 2) and "n_a + n_B + 2" degrees of freedom
+ic <- c()
+ic[1] <- (xbar_A - xbar_B) + (qt(p = 0.025, df = n_A + n_B - 2) * se_diff)
+ic[2] <- (xbar_A - xbar_B) - (qt(p = 0.025, df = n_A + n_B - 2) * se_diff)
+ic
+```
+
 
 7. Answer the following:
 a) What are the dimensions of D and B in the following equation? $\underset{? \times ?}{\mathrm{D}} = \underset{3 \times 4 }{\mathrm{A}} \times \underset{? \times ?}{\mathrm{B}} \times \underset{10 \times 10}{\mathrm{C}}$
