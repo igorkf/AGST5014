@@ -79,11 +79,11 @@ b) True replication
 Is the smallest experimental unit to which a treatment is independently applied.   
 Example: a researcher randomly selects 4 plots of land, applies a different fertilizer (treatment) to each plot, and measures the yield of each plot. This is the case of a true replication because the researcher accounted for independent treatments for each group of samples.
 
-c) Experimental unit    
+c) Experimental unit   
 Is the smallest entity that can be randomly assigned to a different treatment condition.   
 Example: if a researcher randomly selects 4 plots of land, applies a different fertilizer (treatment) to each plot, and measures the yield of each plot, then each plot would be a experimental unit, because in this case is the smallest entity in which you would apply a different treatment.   
 
-d) Observational unit       
+d) Observational unit    
 Is the unit observed (measured) by the researcher in the study.    
 Example: if a researcher is studying the impact of a new fertilizer on the crop yield, the observational unit could be a group of plants.
 
@@ -108,7 +108,7 @@ sP <- sqrt((((n_A - 1) * s_A ^ 2) + ((n_B - 1) * s_B ^ 2)) / (n_A + n_B - 2))
 # standard error between difference of means
 se_diff <- sP * sqrt((1 / n_A) + (1 / n_B))
 
-# use the t-statistic with P(T <= alpha / 2) and "n_a + n_B + 2" degrees of freedom
+# use the t-statistic with P(T <= alpha / 2) and "n_a + n_B - 2" degrees of freedom
 ic <- c()
 ic[1] <- (xbar_A - xbar_B) + (qt(p = 0.025, df = n_A + n_B - 2) * se_diff)
 ic[2] <- (xbar_A - xbar_B) - (qt(p = 0.025, df = n_A + n_B - 2) * se_diff)
@@ -119,38 +119,119 @@ ic
 7. Answer the following:
 a) What are the dimensions of D and B in the following equation? $\underset{? \times ?}{\mathrm{D}} = \underset{3 \times 4 }{\mathrm{A}} \times \underset{? \times ?}{\mathrm{B}} \times \underset{10 \times 10}{\mathrm{C}}$
 ```{r}
+# we should use conformable matrices
 A <- matrix(nrow = 3, ncol = 4)
 B <- matrix(nrow = 4, ncol = 10)
 C <- matrix(nrow = 10, ncol = 10)
 D <- A %*% B %*% C
-print(dim(D))
+cat('D:', paste0(dim(D), collapse = 'x'))
 ```
 
-b) Which row and column would the item $b_{1, 3} = 24$ go on matrix $\mathbf{B}$?
-c) What are the dimensions of A’A and AA’?
+b) Which row and column would the item $b_{1, 3} = 24$ go on matrix $\mathbf{B}$?   
+In the row $1$ and the column $3$.   
 
-8. Define the following matrices:
-a) diagonal matrix;
-b) identity matrix (What R function do we use to create it?)
-c) upper or lower triangular matrix;
-d) square matrix
+c) What are the dimensions of A'A and AA'?
+```{r}
+AtA <- t(A) %*% A
+cat("A'A:", paste0(dim(AtA), collapse = 'x'), '\n')
+
+AAt <- A %*% t(A)
+cat("AA':", paste0(dim(AAt), collapse = 'x'))
+```
+
+
+8. Define the following matrices:   
+a) diagonal matrix   
+Is a square matrix whose off-diagonal entries are all equal to zero (the diagonal from the top left corner to the bottom right corner of a square matrix is called the main diagonal or only diagonal).     
+
+b) identity matrix (What R function do we use to create it?)    
+Is a square matrix whose main diagonal elements equal to 1 and off-diagonal elements are zeros.   
+```{r}
+# create 3x3 identity matrix
+diag(3)
+```
+
+c) upper or lower triangular matrix   
+Upper triangular matrix: a square matrix whose elements below the main diagonal are zeros.   
+Lower triangular matrix: a square matrix whose elements above the main diagonal are zeros.   
+
+d) square matrix   
+Is a matrix whose quantity of rows and columns are the same.      
+
 
 9. Given the following matrices:
 ```
-A = [1 2 3]        B = [ 7    8]         C = [4   7  2] 	k = 10
-                [4 5 6]               [ 9  10]	        [5  8  4]
-                                          [11 12]	        [6  9  5]
+A = [1 2 3]
+    [4 5 6]
+    
+B = [7   8]  
+    [9  10]
+    [11 12]
+    
+C = [4 7 2]
+    [5 8 4]
+    [6 9 5]
+
+k = 10
 ```
 
-Calculate:
-a) A x B
-b) Inverse of C
-c) A B (Kronecker product of A and B)
-d) Transpose of B
-e) kA
+Calculate:   
+a) $A \times B$
+```{r}
+A <- matrix(1:6, nrow = 2, byrow = T)
+B <- matrix(7:12, nrow = 3, byrow = T)
+A %*% B
+```
+
+b) Inverse of $C$
+```{r}
+C <- matrix(c(4, 7, 2, 5, 8, 4, 6, 9, 5), nrow = 3, byrow = T)
+solve(C)
+```
+
+c) $A \otimes B$ (Kronecker product of A and B)
+```{r}
+kronecker(A, B)
+```
+
+d) Transpose of $B$
+```{r}
+t(B)
+```
+
+e) $kA$
+```{r}
+k <- 10
+k * A
+```
+
 
 10. Represent the following system of equations with matrix notation. Also show how to create the resulting matrix with R.
+\begin{align*}
+& 3x + 2y = 12 \\
+& 4x - y = 2
+\end{align*}
+
+Writing as $Av = r$:
 $$
-3x + 2y = 12 \
-4x - y = 2
+\begin{bmatrix}
+3 & 2 \\
+4 & -1 
+\end{bmatrix}
+\begin{bmatrix}
+x \\
+y 
+\end{bmatrix}
+=
+\begin{bmatrix}
+12 \\
+2 
+\end{bmatrix}
 $$
+```{r}
+A <- matrix(c(3, 2, 4, -1), nrow = 2, byrow = T)
+v <- c(12, 2)
+r <- solve(A, v)
+cat('x =', r[1], '\ny =', r[2])
+```
+
