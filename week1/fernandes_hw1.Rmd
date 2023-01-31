@@ -34,7 +34,7 @@ We can perform an one-way ANOVA test to check whether the difference in cultivar
 
 ```{r}
 result <- aov(Yield ~ Crop_Variety, data = data)
-print(summary(result))
+summary(result)
 ```
 For a significance level of $\alpha = 0.05$, we reject the null hypothesis that the mean yield of the three cultivars are equal, because $\text{p-value} = 0.025 < 0.05$, which means that at least one mean yield differs. 
 
@@ -49,7 +49,7 @@ data <- data.frame(
 data
 ```
 
-We can use a paired two-sided t-test. We have to used a paired version because the sample is the same, and we have matches before and after a treatment. The two-sided over another alternative is preferred because we are only interested to check whether there's a difference between the two means (not whether one is greater or lesser then the other). These are the null and alternative hypothesis:   
+We can use a paired two-sided t-test. We have to used a paired version because the sample is the same, and we have matches before and after a treatment. The two-sided over another alternative is preferred because we are only interested to check whether there's a difference between the two means (not whether one is greater or lesser than the other). These are the null and alternative hypothesis:   
 \begin{align*}
 & H_0: \text{the difference between the means is 0} \\
 & H_1: \text{the difference between the means is not equal to 0}
@@ -57,7 +57,7 @@ We can use a paired two-sided t-test. We have to used a paired version because t
 
 ```{r}
 result <- t.test(data$Before, data$After, paired = T, alternative = "two.sided")
-print(result)
+result
 ```
 
 As the $\text{p-value} = 0.002947 < 0.05$, using a significance level of $\alpha = 0.05$, we reject the null hypothesis that the difference between the means is 0, i.e., the growth rate changed after applying the treatment.
@@ -67,7 +67,7 @@ As the $\text{p-value} = 0.002947 < 0.05$, using a significance level of $\alpha
 x <- c(9.58,  6.64,  6.75,  5.26, 19.07, 10.32, 17.62,  6.32, 14.75, 18.36,
        11.97, 18.87,  6.01, 10.51, 12.41, 17.09, 18.12, 11.84, 7.63, 14.26)
 z <- (x - mean(x)) / sd(x)
-print(z)
+z
 ```
 
 5. Explain what each term is and give an example:
@@ -81,7 +81,7 @@ Example: a researcher randomly selects 4 plots of land, applies a different fert
 
 c) Experimental unit   
 Is the smallest entity that can be randomly assigned to a different treatment condition.   
-Example: if a researcher randomly selects 4 plots of land, applies a different fertilizer (treatment) to each plot, and measures the yield of each plot, then each plot would be a experimental unit, because in this case is the smallest entity in which you would apply a different treatment.   
+Example: if a researcher randomly selects 4 plots of land, applies a different fertilizer (treatment) to each plot, and measures the yield of each plot, then each plot would be a experimental unit, because in this case it's the smallest entity in which you would apply a different treatment.   
 
 d) Observational unit    
 Is the unit observed (measured) by the researcher in the study.    
@@ -230,7 +230,7 @@ y
 $$
 ```{r}
 A <- matrix(c(3, 2, 4, -1), nrow = 2, byrow = T)
-v <- c(12, 2)
+v <- matrix(c(12, 2), nrow = 2, byrow = T)
 r <- solve(A, v)
 cat('x =', r[1], '\ny =', r[2])
 ```
