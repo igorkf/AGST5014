@@ -66,14 +66,16 @@ No, we don't reject the null hypothesis that the golf performance is equal, beca
 b) Analyze the residuals from this experiment and comment on model adequacy.
 ```{r, fig.asp = 1.1, fig.width = 5.3, fig.align = 'center'}
 par(mfrow = c(2, 2))
-plot(fit, xaxs='i', yaxs='i')
+plot(fit, which = 1)
+plot(fit, which = 2)
+plot(residuals(fit) ~ rownames(df), main = 'Residuals vs Exp. Unit', 
+     font.main = 1, data = df, xlab = 'Experimental unit', ylab = 'Residuals')
+abline(h = 0, lty = 2)
 ```
-
-The Residual vs Fitted plot shows homoscedasticity, i.e., the variance is constant along the x-axis, and are equally distributed around zero.   
-The Normal Q-Q plot shows that the residuals are normally distributed because the points are very aligned with the Q-Q line.    
-The Scale-Location plot presents more variance in the lower portion of the fitted values, whereas the larger portion shows a lower variance. The variance is decreasing as the fitted values increase.   
-The Residuals vs Leverage does not show any points with big Cook's distance, therefore there are no influential points in the model.  
-In general, although the Scale-Location shows a slightly non horizontal pattern, the residual plots represent a good model adequacy.   
+The Residual vs Fitted plot shows homoscedasticity, i.e., the variance is constant along the predicted values, and are equally distributed around zero.   
+The Normal Q-Q plot shows that the residuals are normally distributed because the points are very aligned with the Q-Q line.  
+The Residual vs Exp. Unit plot presents an constant variance across the different experimental units.    
+In general, the residual plots represent a good model adequacy.   
 
 2. An article in Environment International (Vol. 18, No. 4, 1992) describes an experiment in which the amount of radon released in showers was investigated. Radon-enriched water was used in the experiment, and six different orifice diameters were tested in shower heads. The data from the experiment are shown in the following table: 
 ```{r}
@@ -112,15 +114,26 @@ pf(q = 30.85, df1 = 5, df2 = 18, lower.tail = F)
 c) Analyze the residuals from this experiment.   
 ```{r, fig.asp = 1.1, fig.width = 5.3, fig.align = 'center'}
 par(mfrow = c(2, 2))
-plot(fit, xaxs='i', yaxs='i')
+plot(fit, which = 5)
+plot(fit, which = 1)
+plot(fit, which = 2)
+plot(residuals(fit) ~ rownames(df_long), main = 'Residuals vs Exp. Unit', 
+     font.main = 1, data = df_long, xlab = 'Experimental unit', ylab = 'Residuals')
+abline(h = 0, lty = 2)
 ```
-In general, the residual plots shows that the variance are homogeneous, although the standardized residuals have a slightly non horizontal pattern. The normality assumption is satisfied from the QQ-plot, and there are no influential points in any factor level.   
+The Residuals vs Factor Levels plot shows that some factor levels have more variability than others.   
+The Residuals vs Fitted plot shows the residuals are somewhat homogeneous across the predicted values around around the zero.    
+The Normal Q-Q shows a deviation from the Q-Q line, which means the normality of residuals is not met.   
+Finally, the Residuals vs Exp. Unit plot does not show a horizontal pattern.   
+In general, the residual plots don't show a good model adequacy.   
 
 d) Construct a graph to compare the treatment means. What conclusions can you draw?   
 ```{r}
 boxplot(radon ~ diameter, data = df_long, xlab = 'Orifice diameter', ylab = 'Radon (%)')
+means <- tapply(df_long$radon, df_long$diameter, mean)
+points(means, col = 'red', pch = 16)
 ```
-The mean percentage in radon differs from each different treatment (orifice diameter), although some treatments show more similar radon percentage distribution (e.g. 0.51 and 0.7; 1.4 and 1.99).
+The mean percentage in radon (red points) differs from each different treatment (orifice diameter), although some treatments show more similar radon percentage distribution (e.g. 0.51 and 0.7; 1.4 and 1.99). Only looking through this data we could be suspicious that the treatment means were significant.    
 
 3. Suppose that we have data on the weight loss of 100 people, each person assigned to one specific diet, each diet having assigned to it the same number of people. In performing an ANOVA, the analysts arrived at the table below, which is incomplete; Fill in the blanks.
 ```{r, echo=FALSE, results='asis'}
@@ -168,13 +181,13 @@ We reject the null hypothesis that the mean yield of soybeans are equal, i.e., a
 $$
 Y_{ij} = \mu_i + \epsilon_{ij},
 $$
-where $Y_{ij}$ is the yield for the j-th experimental unit subject to the i-th dose, $i = 1, \dots, 4$, $j = 1, \dots, r_i$, and $r_i$ is the number of experimental units or replications in the i-th dose. In the Question 4, all the doses have the same number of replications ($r = 6$). The $\mu_i$ is the mean within the i-th dose. The errors $\epsilon_{ij}$ are i.i.d. normally distributed with mean $0$ and variance $\sigma^2$.    
+where $Y_{ij}$ is the yield for the j-th experimental unit subject to the i-th dose, $i = 1, \dots, 4$, $j = 1, \dots, r_i$, and $r_i$ is the number of experimental units or replications in the i-th dose. In the Question 4, all the doses have the same number of replications ($r_1 = r_2 = r_3 = r_4 = 6$). The $\mu_i$ is the mean within the i-th dose. The errors $\epsilon_{ij}$ are i.i.d. normally distributed with mean $0$ and constant variance $\sigma^2$.    
 
 ### Treatment effects model
 $$
 Y_{ij} = \mu + \tau_i + \varepsilon_{ij},
 $$
-where $\tau_i$ is the difference between the mean of the i-th dose and the global mean $\mu$. The errors $\epsilon_{ij}$ are i.i.d. normally distributed with mean $0$ and variance $\sigma^2$
+where $\tau_i$ is the effect of the i-th dose and $\mu$ is the global mean . The errors $\epsilon_{ij}$ are i.i.d. normally distributed with mean $0$ and constant variance $\sigma^2$  
 
 ### Matrix form model
 $$
@@ -250,13 +263,120 @@ y_{46}
 \epsilon_{25} \\
 \epsilon_{26} \\
 \vdots \\
-\epsilon_{61} \\
-\epsilon_{62} \\
-\epsilon_{63} \\
-\epsilon_{64} \\
-\epsilon_{65} \\
-\epsilon_{66} \\
+\epsilon_{41} \\
+\epsilon_{42} \\
+\epsilon_{43} \\
+\epsilon_{44} \\
+\epsilon_{45} \\
+\epsilon_{46} \\
 \end{pmatrix}_{24 \times 1}
 $$
+where $\boldsymbol{\epsilon} \sim \text{MVN}(\boldsymbol{0}, \sigma^2 \boldsymbol{I})$, where $\boldsymbol{0}$ is a vector of zeros, and $\boldsymbol{I}$ is an identity matrix.
+
+6. In an experiment that aims to compare plant growth under the application of  3 different fertilizers, the researcher has 6 experimental units available. Assuming a CRD will be used with an equal number of replications, provide below the Linear Model in matrix form and write all matrices with their elements (see slide 5 from Week3_part1).
+
+The experiment has $3$ treatments and $6$ experimental units. As the experiment used an equal number of replications, then there are $2$ replications per treatment:
+$$
+\boldsymbol{y} = \boldsymbol{X} \boldsymbol{\beta} + \boldsymbol{\epsilon},
+$$
+
+where
+$$
+\boldsymbol{y} = \begin{pmatrix}
+y_{11} \\
+y_{12} \\
+y_{21} \\
+y_{22} \\
+y_{31} \\
+y_{32} 
+\end{pmatrix}_{6 \times 1}, \ \ 
+%
+\boldsymbol{X} = 
+\begin{pmatrix}
+1 & 1 & 0 & 0 \\
+1 & 1 & 0 & 0 \\
+1 & 0 & 1 & 0 \\
+1 & 0 & 1 & 0 \\
+1 & 0 & 0 & 1 \\
+1 & 0 & 0 & 1  
+\end{pmatrix}_{6 \times 4}, \ \
+%
+\boldsymbol{\beta} = \begin{pmatrix}
+\mu \\
+\tau_{1} \\
+\tau_{2} \\
+\tau_{3} 
+\end{pmatrix}_{4 \times 1}, \ \
+%
+\boldsymbol{\epsilon} = \begin{pmatrix}
+\epsilon_{11} \\
+\epsilon_{12} \\
+\epsilon_{21} \\
+\epsilon_{22} \\
+\epsilon_{31} \\
+\epsilon_{32} \\
+\end{pmatrix}_{6 \times 1}
+$$
+
+7. Design a CRD, i.e., create a table with the randomized treatments for the experiment mentioned in question 6. Include your table below and indicate how it was generated.
+```{r}
+set.seed(2023)
+factors <- as.factor(rep(c('a', 'b', 'c'), 2))  # 3 treatments, 2 repetitions each
+factors <- sample(factors)  # randomize treatments
+ids <- seq(1:length(factors))  
+df <- data.frame(id = ids, treat = factors)
+print(df, row.names = FALSE)
+```
+
+```{r}
+# check that the number of repetitions are equal
+table(df$treat)
+```
+
+8. The data set HW2_Q9.csv is from an experiment aiming to evaluate the influence of yacon flour consumption on the glycemic index. Run an ANOVA, check the assumptions, and if they are not met, re-run the model with the appropriate transformation.   
+```{r}
+df <- read.csv('HW2_Q9.csv')
+df$treat <- as.factor(df$treat)
+str(df)
+```
+
+```{r}
+fit1 <- aov(y ~ treat, data = df)
+summary(fit1)
+```
+
+```{r, fig.asp = 1.1, fig.width = 5.3, fig.align = 'center'}
+par(mfrow = c(2, 2))
+plot(fit1, which = 5)
+plot(fit1, which = 1)
+plot(fit1, which = 2)
+plot(residuals(fit1) ~ rownames(df), main = 'Residuals vs Exp. Unit', 
+     font.main = 1, data = df, xlab = 'Experimental unit', ylab = 'Residuals')
+abline(h = 0, lty = 2)
+```
+The residuals variance is not homogeneous across the fitted values. Actually, the variance seems to increase as the fitted values increase. This also happens when we look at the residuals within each factor level. The normality assumption is not met. Moreover, the residuals across the experimental units does not show a horizontal pattern. 
+
+```{r}
+bc <- MASS::boxcox(fit1, data = df)  # do box-cox power transformation search
+lambda <- bc$x[which.max(bc$y)]  # pick lambda with the highest log-likelihood
+df$y_trans <- df$y ^ lambda  # transform the response variable
+
+# fit again but using the transformed response variable
+fit2 <- lm(y_trans ~ treat, data = df)
+anova(fit2)
+```
+
+```{r, fig.asp = 1.1, fig.width = 5.3, fig.align = 'center'}
+par(mfrow = c(2, 2))
+plot(fit2, which = 5)
+plot(fit2, which = 1)
+plot(fit2, which = 2)
+plot(residuals(fit2) ~ rownames(df), main = 'Residuals vs Exp. Unit', 
+     font.main = 1, data = df, xlab = 'Experimental unit', ylab = 'Residuals')
+abline(h = 0, lty = 2)
+```
+The residual plots are way better. The homoscedasticity is present, with residuals varying constantly around 0, and the normality seems to be met (with slightly deviations). The residuals also are constant between the different factor levels, and the residuals follow a horizontal pattern when looking across the experimental units.       
+
+9. There is an "Exercises" section at the end of chapter 3. For this homework, answer question 5 of the Exercises list of chapter 3.   
 
 
