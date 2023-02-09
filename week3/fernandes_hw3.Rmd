@@ -10,10 +10,98 @@ knitr::opts_chunk$set(echo = TRUE)
 ```
 
 ### 1 The following output was obtained from a computer program that performed a two-factor ANOVA on a factorial experiment. 
-![](fig1.png)
+
+```{r, echo=FALSE, results='asis'}
+table <- '
+|    Source   | DF |    SS   |   MS   | F |   P   |
+|:-----------:|:--:|:-------:|:------:|:-:|:-----:|
+|      A      |  1 |    -    | 0.0002 | - |   -   |
+|      B      |  - | 180.378 |    -   | - |   -   |
+| Interaction |  3 |  8.479  |    -   | - | 0.932 |
+|    Error    |  8 | 158.797 |    -   |   |       |
+|    Total    | 15 | 347.653 |        |   |       |
+'
+cat(table)
+```
+
 
 a) Fill in the blanks in the ANOVA table.
+```{r}
+# calculating missing p-values
 
-b) How many levels were used for factor B?
+# P(F > 0.00001), df1 from the A factor, df2 from the Error
+pf(q = 0.00001, df1 = 1, df2 = 8, lower.tail = F)
 
-c) How many replicates of the experiment were performed?
+# P(F > 3.02917), df1 from the B factor, df2 from the Error
+pf(q = 3.02917, df1 = 3, df2 = 8, lower.tail = F)
+```
+
+```{r, echo=FALSE, results='asis'}
+table <- '
+|    Source   | DF |    SS   |   MS   |    F    |      P     |
+|:-----------:|:--:|:-------:|:------:|:-------:|:----------:|
+|      A      |  1 |  0.0002 | 0.0002 | 0.00001 |  0.9975543 |
+|      B      |  3 | 180.378 | 60.126 | 3.02917 | 0.09334106 |
+| Interaction |  3 |  8.479  |  2.826 | 0.14237 |    0.932   |
+|    Error    |  8 | 158.797 | 19.849 |         |            |
+|    Total    | 15 | 347.653 |        |         |            |
+'
+cat(table)
+```
+
+
+b) How many levels were used for factor B?    
+$4$ levels because DF from B treatment is $b - 1 = 3$, so $b = 4$.   
+
+c) How many replicates of the experiment were performed?        
+Degrees of freedom from Error is $ab(r - 1) = 8$, then $2 \times 4 \times (r - 1) = 8$, then $8r = 16$, then $r = 2$ replicates.   
+
+### 2 Brewer’s malt is produced from germinating barley, so brewers like to know under what conditions they should germinate their barley. The following is part of an experiment on barley germination. Barley seeds were divided into 30 lots of 100 seeds, and each lot of 100 seeds was germinated under one of ten conditions chosen at random. The conditions are the ten combinations of weeks after harvest (1, 3, 6, 9, or 12 weeks) and the amount of water used in germination (4 ml or 8 ml). The response is the number of seeds germinating. We are interested in whether the timing and/or amount of water affect germination. Analyze these data to determine how the germination rate depends on the treatments.    
+![](fig2.png)
+```{r}
+df <- expand.grid(h20 = c(4, 8), age_seeds = c(1, 3, 6, 9, 12))
+df <- rbind(df, df, df)  # 3 reps
+df <- df[order(df$h20), ]
+rownames(df) <- 1:nrow(df)  # fix row numbers
+df$h20 <- as.factor(df$h20)
+df$age_seeds <- as.factor(df$age_seeds)
+
+# assign response
+df$seeds <- c(
+  11, 7, 9, 13, 20,
+  9, 16, 19, 35, 37,
+  6, 17, 35, 28, 45,
+  8, 1, 5, 1, 11,
+  3, 7, 9, 10, 15,
+  3, 3, 9, 9, 25
+)
+
+tibble::glimpse(df)
+```
+
+```{r}
+with(df, (interaction.plot(h20, age_seeds, seeds, type = 'b',
+                           pch = c(1, 2, 3, 4, 5), leg.bty = 'o',
+                           main = 'Interaction Plot of Age seeds and Amount of water',
+                           xlab = 'Amount of water (ml)', ylab = 'Number of seeds',
+                           trace.label = 'Age seed\n(weeks)')))
+```
+In all different harvesting weeks (1, 3, 6, 9, 12) we observe a decreasing of count of seeds when we increase the water amount of water (in ml) from 4 to 8, however, the count of seeds decreases a lot (from ~35 to ~20) when we change the amount of water from 4 to 8 ml and harvest after 12 weeks (losango symbol), whereas a smaller decrease is seen when we change the amount of water from 4 to 8 ml but harvest after only 1 week (circle symbol).    
+When looking only to the Amount of water, using 4 mls rather than 8 always produced a larger number of seeds, despite the harvesting weeks.    
+Let's check whether these factors and the interaction are significant.        
+```{r}
+fit <- aov(seeds ~ h20 * age_seeds, data = df)
+summary(fit)
+```
+
+Using a significance level of $\alpha = 0.05$, we see that both the amount of water and harvesting weeks affect germination (i.e. are significant), however, the interaction between both treatments is not significant to the germination because $\text{p-value} = 0.4906 > \alpha$.
+
+### 3 Pine oleoresin is obtained by tapping the trunks of pine trees. Tapping is done by cutting a hole in the bark and collecting the resin that oozes out. This experiment compares four shapes for the holes and the efficacy of acid treating the holes. Twenty-four pine trees are randomly selected from a plantation, and the 24 are assigned randomly to the eight combinations of whole shape (circular, diagonal slash, check, rectangular) and acid treatment (yes or no). The response is the total grams of resin collected from the hole (data from Low and Bin Mohd. Ali 1985). Analyze these data to determine how the treatments affect resin yield. Include the Tukey HSD test in your analysis.    
+![](fig3.png)
+```{r}
+
+```
+
+ 
+
+
