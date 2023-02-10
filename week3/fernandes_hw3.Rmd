@@ -9,8 +9,8 @@ output: pdf_document
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
-### 1 The following output was obtained from a computer program that performed a two-factor ANOVA on a factorial experiment. 
 
+### 1 The following output was obtained from a computer program that performed a two-factor ANOVA on a factorial experiment.    
 ```{r, echo=FALSE, results='asis'}
 table <- '
 |    Source   | DF |    SS   |   MS   | F |   P   |
@@ -80,11 +80,11 @@ tibble::glimpse(df)
 ```
 
 ```{r}
-with(df, (interaction.plot(h20, age_seeds, seeds, type = 'b',
+with(df, {interaction.plot(h20, age_seeds, seeds, type = 'b',
                            pch = c(1, 2, 3, 4, 5), leg.bty = 'o',
                            main = 'Interaction Plot of Age seeds and Amount of water',
                            xlab = 'Amount of water (ml)', ylab = 'Number of seeds',
-                           trace.label = 'Age seed\n(weeks)')))
+                           trace.label = 'Age seed\n(weeks)')})
 ```
 In all different harvesting weeks (1, 3, 6, 9, 12) we observe a decreasing of count of seeds when we increase the water amount of water (in ml) from 4 to 8, however, the count of seeds decreases a lot (from ~35 to ~20) when we change the amount of water from 4 to 8 ml and harvest after 12 weeks (losango symbol), whereas a smaller decrease is seen when we change the amount of water from 4 to 8 ml but harvest after only 1 week (circle symbol).    
 When looking only to the Amount of water, using 4 mls rather than 8 always produced a larger number of seeds, despite the harvesting weeks.    
@@ -99,9 +99,86 @@ Using a significance level of $\alpha = 0.05$, we see that both the amount of wa
 ### 3 Pine oleoresin is obtained by tapping the trunks of pine trees. Tapping is done by cutting a hole in the bark and collecting the resin that oozes out. This experiment compares four shapes for the holes and the efficacy of acid treating the holes. Twenty-four pine trees are randomly selected from a plantation, and the 24 are assigned randomly to the eight combinations of whole shape (circular, diagonal slash, check, rectangular) and acid treatment (yes or no). The response is the total grams of resin collected from the hole (data from Low and Bin Mohd. Ali 1985). Analyze these data to determine how the treatments affect resin yield. Include the Tukey HSD test in your analysis.    
 ![](fig3.png)
 ```{r}
-
+# similar to the previous question
+df <- expand.grid(acid = c('control', 'acid'), shape = c('circular', 'diagonal', 'check', 'rect'))
+df <- rbind(df, df, df)
+df$acid <- factor(df$acid, c('control', 'acid'))  # control level first
+df$shape <- as.factor(df$shape)
+df <- df[order(df$acid), ]
+rownames(df) <- 1:nrow(df)
+df$resin <- c(
+  9, 43, 60, 77,
+  13, 48, 65, 70,
+  12, 57, 70, 91,
+  15, 66, 75, 97,
+  13, 58, 78, 108,
+  20, 73, 90, 99
+)
+tibble::glimpse(df)
 ```
 
- 
+```{r}
+with(df, {interaction.plot(acid, shape, resin, type = 'b',
+                           pch = c(1, 2, 3, 4), leg.bty = 'o',
+                           main = 'Interaction Plot of Control/Acid and Hole shape',
+                           xlab = 'Treatment', ylab = 'Grams of resin',
+                           trace.label = 'Hole shape')})
+```
+When looking only to the first treatment (control or acid), we can see that despite the hole shape the grams of resin are always bigger when using the control rather the acid treatment.    
+In addition, the rate of grams of resin seems bigger when changing from control to acid treatment when using the rectangular shape hole rather the circular one, for example.    
+The lines are quite parallel, which means that we would not expect an significant interaction.     
+
+We can fit an two-way ANOVA first and check the results:   
+```{r}
+fit <- aov(resin ~ acid * shape, data = df)
+summary(fit)
+```
+From this result, using a significance level of $\alpha = 0.05$, we can see that both control/acid treatment and hole shape treatments affect the quantity of grams of resin, i.e, they are significant. However, the interaction is not significant because the $\text{p-value} > 0.05$.         
+
+```{r}
+fit_tukey <- TukeyHSD(fit, ordered = F)
+fit_tukey
+```
+
+From ANOVA, we saw that both treatments are significant (i.e. at least one treatment level differs from another). Now, with the Tukey HSD test, we can see that all the differences are significant as well (e.g., acid - control regarding the first treatment, and diagonal - circular and check - circular regarding the second treatment). In addition, ANOVA shows us the interaction was not significant, so we don't need to check it using a post hoc test such as Tukey HSD).   
+
+### 4 Big sagebrush is often planted in range restoration projects. An experiment is performed to determine the effects of storage length and relative humidity on the viability of seeds. Sixty-three batches of 300 seeds each are randomly divided into 21 groups of three. These 21 groups each receive a different treatment, namely the combinations of storage length (0, 60, 120, 180, 240, 300, or 360 days) and storage relative humidity (0, 32, or 45%). After the storage time, the seeds are planted, and the response is the percentage of seeds that sprout. Use the data set HW3_Q4.xlsx and analyze these data for the effects of the factors on viability.    
+```{r}
+df <- expand.grid(rel_hum = c('0%', '32%', '45%'), storage_length = c(0, 60, 120, 180, 240, 300, 360))
+df <- rbind(df, df, df)  # 3 reps
+df$rel_hum <- as.factor(df$rel_hum)
+df$storage_length <- as.factor(df$storage_length)
+df <- df[order(df$rel_hum), ]
+rownames(df) <- 1:nrow(df)
+df$seeds_sprout <- c(
+  82.1,	78.6,	79.8,	82.3,	81.7,	85,	82.7,
+  79,	80.8,	79.1,	75.5,	80.1,	87.9,	84.6,
+  81.9,	80.5,	78.2,	79.1,	81.1,	82.1,	81.7,
+  83.1,	78.1,	80.4,	77.8,	83.8,	82,	81,
+  80.5,	83.6,	81.8,	80.4,	83.7,	77.6,	78.9,
+  82.4,	78.3,	83.8,	78.8,	81.5,	80.3,	83.1,
+  83.1,	66.5,	52.9,	52.9,	52.2,	38.6,	25.2,
+  78.9,	61.4,	58.9,	54.3,	51.9,	37.9,	25.8,
+  81,	61.2,	59.3,	48.7, 48.8,	40.6,	21
+)
+tibble::glimpse(df)
+```
+
+```{r}
+with(df, {interaction.plot(rel_hum, storage_length, seeds_sprout, type = 'b',
+                           pch = c(1, 2, 3, 4, 5, 6, 7), leg.bty = 'o',
+                           main = 'Interaction Plot of Relativity humidity and Storage length',
+                           xlab = 'Relativity humidity (%)', ylab = 'Seeds that sprout (%)',
+                           trace.label = 'Storage length\n(days)')})
+```
+
+From the interaction plot we can see that when changing the relativity humidity from 32% to 45% the percentage of seeds that sprout varies depending of the days of storage length, which seems to show there is an interaction.   
+When changing the relativity humidity from 0% to 32% the percentage of seeds that sprout seems not to change that much when using different storage lengths. With very different slope lines across the last two levels of relativity humidity, we could suspect that there are interactions.    
+```{r}
+fit <- aov(seeds_sprout ~ rel_hum * storage_length, data = df)
+summary(fit)
+```
+
+Using a significance level of $\alpha = 0.05$, we conclude that both treatments are significant. The interaction interaction is also significant, as we suspected from the interaction plot.    
 
 
