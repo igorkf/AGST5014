@@ -99,8 +99,11 @@ Using a significance level of $\alpha = 0.05$, we see that both the amount of wa
 ### 3 Pine oleoresin is obtained by tapping the trunks of pine trees. Tapping is done by cutting a hole in the bark and collecting the resin that oozes out. This experiment compares four shapes for the holes and the efficacy of acid treating the holes. Twenty-four pine trees are randomly selected from a plantation, and the 24 are assigned randomly to the eight combinations of whole shape (circular, diagonal slash, check, rectangular) and acid treatment (yes or no). The response is the total grams of resin collected from the hole (data from Low and Bin Mohd. Ali 1985). Analyze these data to determine how the treatments affect resin yield. Include the Tukey HSD test in your analysis.    
 ![](fig3.png)
 ```{r}
-# similar to the previous question
-df <- expand.grid(acid = c('control', 'acid'), shape = c('circular', 'diagonal', 'check', 'rect'))
+# similar idea of the previous question
+df <- expand.grid(
+  acid = c('control', 'acid'), 
+  shape = c('circular', 'diagonal', 'check', 'rect')
+)
 df <- rbind(df, df, df)
 df$acid <- factor(df$acid, c('control', 'acid'))  # control level first
 df$shape <- as.factor(df$shape)
@@ -126,7 +129,7 @@ with(df, {interaction.plot(acid, shape, resin, type = 'b',
 ```
 When looking only to the first treatment (control or acid), we can see that despite the hole shape the grams of resin are always bigger when using the control rather the acid treatment.    
 In addition, the rate of grams of resin seems bigger when changing from control to acid treatment when using the rectangular shape hole rather the circular one, for example.    
-The lines are quite parallel, which means that we would not expect an significant interaction.     
+The lines are quite parallel, which means that we would not expect a significant interaction.     
 
 We can fit an two-way ANOVA first and check the results:   
 ```{r}
@@ -140,11 +143,14 @@ fit_tukey <- TukeyHSD(fit, ordered = F)
 fit_tukey
 ```
 
-From ANOVA, we saw that both treatments are significant (i.e. at least one treatment level differs from another). Now, with the Tukey HSD test, we can see that all the differences are significant as well (e.g., acid - control regarding the first treatment, and diagonal - circular and check - circular regarding the second treatment). In addition, ANOVA shows us the interaction was not significant, so we don't need to check it using a post hoc test such as Tukey HSD).   
+From ANOVA, we saw that both treatments are significant (i.e. at least one treatment level differs from another). Now, with the Tukey HSD test, we can see that all the differences are significant as well (e.g., acid - control regarding the first treatment, and diagonal - circular and check - circular regarding the second treatment). In addition, ANOVA shows us the interaction was not significant, so we don't need to check it using a post hoc test such as Tukey HSD.   
 
 ### 4 Big sagebrush is often planted in range restoration projects. An experiment is performed to determine the effects of storage length and relative humidity on the viability of seeds. Sixty-three batches of 300 seeds each are randomly divided into 21 groups of three. These 21 groups each receive a different treatment, namely the combinations of storage length (0, 60, 120, 180, 240, 300, or 360 days) and storage relative humidity (0, 32, or 45%). After the storage time, the seeds are planted, and the response is the percentage of seeds that sprout. Use the data set HW3_Q4.xlsx and analyze these data for the effects of the factors on viability.    
 ```{r}
-df <- expand.grid(rel_hum = c('0%', '32%', '45%'), storage_length = c(0, 60, 120, 180, 240, 300, 360))
+df <- expand.grid(
+  rel_hum = c('0%', '32%', '45%'), 
+  storage_length = c(0, 60, 120, 180, 240, 300, 360)
+)
 df <- rbind(df, df, df)  # 3 reps
 df$rel_hum <- as.factor(df$rel_hum)
 df$storage_length <- as.factor(df$storage_length)
@@ -236,11 +242,53 @@ with(df, {interaction.plot(col_temp, gas_flow_rate, resolution, type = 'b',
                            trace.label = 'Gas Flow Rate')})
 ```
    
-   
-b) Write a sentence, or two, to interpret this interaction.     
+b) Write a sentence, or two, to interpret this interaction.       
+The resolution increases when we change the column temperature from 120 to 180 despite the gas flow rate level.    
+However, for the high gas flow rate level the difference between the resolution increasing is 18 - 13 = 6 when changing from column temperature 120 to 180, whereas the difference between the resolution increasing in low gas flow rate level is 11 - 10 = 1 for the same column temperature changing scenario.   
+
+### 8 The data set HW3_Q8.csv contains information about a fish weight experiment conducted under 2 seasons and 3 densities (number of fishes/tank). Analyze this data and construct an interaction plot. Is there evidence of interaction?   
+```{r}
+df <- read.csv('HW3_Q8.csv')
+df$density <- as.factor(df$density)
+df$season <- as.factor(df$season)
+tibble::glimpse(df)
+```
+
+```{r}
+with(df, {interaction.plot(density, season, y, type = 'b',
+                           pch = c(1, 2), leg.bty = 'o',
+                           main = 'Interaction Plot of Density and Season',
+                           xlab = 'Density', ylab = 'Weight',
+                           trace.label = 'Season')})
+```
+
+There is evidence of interaction because the fish weight does not change when changing the density from 6 to 12 within the spring season, but the fish weight decreases a lot (from 4 to 3) when changing the density from 6 to 12 but in the summer spring. This means that the fish weight is being affect by the interaction (e.g. from a specific combination level of both treatments).   
+Let's run a two-way ANOVA and check the results:   
+```{r}
+fit <- aov(y ~ density * season, data = df)
+summary(fit)
+```
+
+Using a significance level of $\alpha = 0.05$, we can see that the interaction is indeed significance, because the $\text{p-value} < \alpha$. Moreover, both treatments are also significant, i.e. the density and the season are affecting the fish weight.   
+
+### 9 What is the constraint used by R to solve the Normal equations and estimate the parameters of interest in ANOVA? Why is this a necessary step? Are there any other options for constraints?   
+R uses the "Treatment constraint" and removes by default the first level of each treatment. For example, if you have a model with one treatment that has 3 levels, R will set the first level to $0$.   
+The interpretation for this constraint is that $\mu$ would be the first treatment level, while $\alpha_2$ and $\alpha_3$ would be the differences between the second treatment mean and the first treatment mean and the third treatment mean and the first treatment mean, respectively.        
+    
+This step is necessary because to solve the normal equations R calculates $(X'X)^{-1}$, but the design matrix $X$ using a dummy column for the intercept full of $1's$ and a dummy column for each treatment level is linear dependent (LD), which has no inverse. Removing the first level of the treatment (i.e. the second column of the design matrix), we can invert the $X'X$ matrix because now $X$ is linear independent (LI).   
+
+Another option would be to use the "Sum-to-zero constraint" where, in the same example above, $\sum_{i=1}^3 \alpha_i = 0$. In this case, the interpretation is that $\mu$ would be the global mean, while $\alpha_i$, for $i = 1, 2, 3$, would be the differences between the i-th treatment mean and the global mean.    
+
+It's possible to check other contrast options with `?contr.treatment`.    
+
+### 10 Reanalyze the dataset HW3_Q8.csv and obtain the type II and type III sums of squares.   
 ```{r}
 
 ```
+
+
+
+
 
 
 
