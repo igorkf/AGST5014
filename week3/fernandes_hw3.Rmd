@@ -179,6 +179,70 @@ fit <- aov(seeds_sprout ~ rel_hum * storage_length, data = df)
 summary(fit)
 ```
 
-Using a significance level of $\alpha = 0.05$, we conclude that both treatments are significant. The interaction interaction is also significant, as we suspected from the interaction plot.    
+Using a significance level of $\alpha = 0.05$, we conclude that both treatments are significant. The interaction is also significant, as we suspected from the interaction plot.    
+
+### 5 A researcher is interested in comparing the effect of 3 new herbicides and 2 different doses of nitrogen on soybean yield. Design the appropriate experiment with 2 replicates (paste the result below indicating the method/r code used for that).   
+```{r}
+set.seed(2023)
+df <- expand.grid(herbicide = c('A', 'B', 'C'), nitrogen = as.factor(c(0, 100)))
+df <- rbind(df, df)  # 2 reps
+df <- df[sample(1:nrow(df)), ]  # randomly assign each treatment to an experimental unit
+rownames(df) <- 1:nrow(df)  # fix row names
+df
+```
+
+
+### 6 Create an interaction plot for the experiment measuring height in 2 cultivars of sorghum measured under 3 different fertilizers. Is there an interaction between the cultivar and fertilizer? The script below could be used to create the dataset in R:
+```{r}
+data <-data.frame(
+  Fertilizer = as.factor(c(1, 2, 3, 1, 2, 3)),
+  Cultivar = as.factor(c("A", "A", "A", "B", "B", "B")),
+  height = c(1, 2, 3, 5, 4, 2)
+)
+data
+```
+
+```{r}
+with(data, {interaction.plot(Fertilizer, Cultivar, height, type = 'b',
+                             pch = c(1, 2), leg.bty = 'o',
+                             main = 'Interaction Plot of Fertilizer and Cultivar',
+                             xlab = 'Fertilizer', ylab = 'Height',
+                             trace.label = 'Cultivar')})
+```
+Yes, there is an interaction between both treatments because the lines are crossing each other.   
+The fertilizer 1 produces very low height for the cultivar A, but produces a higher height for the same fertilizer but using the another cultivar B.   
+The opposite happens with the fertilizer 3: we see a higher height for the cultivar A than the cultivar B.    
+This means that height seems to be affected by the combinations of the treatments (Fertilizer X Cultivar).   
+
+### 7 Answer question 3 of chapter 3.        
+### In an experiment to maximize the Y = resolution of a peak on a gas chromatograph, a significant interaction between A = column temperature and C = gas flow rate was found. The table below shows the mean resolution in each combination of column temperature and gas flow rate.    
+![](fig4.png)   
+
+a) Construct an interaction graph.    
+```{r}
+df <- data.frame(
+  col_temp = as.factor(c(120, 120, 180, 180)),
+  gas_flow_rate = factor(c('Low', 'High', 'Low', 'High'), levels = c('Low', 'High')),
+  resolution = c(10, 13, 12, 18)
+)
+df
+```
+   
+```{r}
+with(df, {interaction.plot(col_temp, gas_flow_rate, resolution, type = 'b',
+                           pch = c(1, 2), leg.bty = 'o',
+                           main = 'Interaction Plot of Column Temperature and Gas Flow Rate',
+                           xlab = 'Column Temperature', ylab = 'Resolution',
+                           trace.label = 'Gas Flow Rate')})
+```
+   
+   
+b) Write a sentence, or two, to interpret this interaction.     
+```{r}
+
+```
+
+
+
 
 
