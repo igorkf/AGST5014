@@ -283,12 +283,42 @@ It's possible to check other contrast options with `?contr.treatment`.
 
 ### 10 Reanalyze the dataset HW3_Q8.csv and obtain the type II and type III sums of squares.   
 ```{r}
+df <- read.csv('HW3_Q8.csv')
+df$density <- as.factor(df$density)
+df$season <- as.factor(df$season)
+tibble::glimpse(df)
+```
 
+```{r}
+# same number of reps
+table(df$density, df$season, dnn = c('density', 'season'))
 ```
 
 
+```{r}
+# type I sum of squares
+fit <- lm(y ~ density * season, data = df)
+anova(fit)
+```
+With a significance level of $\alpha = 0.05$, we can see that both treatments and the interaction are significant.   
 
 
+```{r}
+# type II sum of squares
+ssII <- car::Anova(fit, type = 'II')
+ssII
+```
+
+
+```{r}
+# type III sum of squares
+fit_contr <- lm(y ~ density * season, data = df, 
+                contrasts = list(density = contr.sum, season = contr.sum))
+ssIII <- car::Anova(fit_contr, type = 'III')
+ssIII
+```
+
+Both the Type II and Type III Sum of Squares have the same results to the Type I because the experiment has an equal number of replications, so we have the same interpretation. The p-values for both treatments and for the interaction are the same.   
 
 
 
