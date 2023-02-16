@@ -48,5 +48,89 @@ cat(table)
 b) How many blocks were used in this experiment?      
 $6$ blocks   
 
-c) What conclusions can you draw?       
+c) What conclusions can you draw?         
+The treatment effect is significant when at a significance level of $\alpha = 0.05$.       
+The blocking effect in this case is useful to reduce the error sum of squares.       
+
+### 2 An experiment with 12 hybrids of Brachiaria spp was carried out in a randomized block design with three replications. The variable measured was the leaf protein content (P %).   
+```{r}
+df <- data.frame(
+  hybrid = 1:12,
+  b1 = c(6.8, 5.8, 6.8, 5.6, 6.9, 3.9, 6, 4.5, 6.1, 5.3, 5.9, 5.2),
+  b2 = c(8.9, 6.4, 8.9, 6.2, 6.1, 4.9, 5.5, 5, 5.3, 6.5, 9, 6.4),
+  b3 = c(10, 9, 11, 6.9, 7, 5.2, 7.9, 6.1, 8.5, 9.7, 11.2, 7.6)
+)
+df_long <- reshape(df, direction = 'long', idvar = 'hybrid', varying = c('b1', 'b2', 'b3'), 
+                   timevar = 'block', v.names = 'protein')
+rownames(df_long) <- 1:nrow(df_long)
+df_long$hybrid <- as.factor(df_long$hybrid)
+df_long$block <- as.factor(df_long$block)
+tibble::glimpse(df_long)
+```
+
+a) Formulate the statistical hypotheses H0 and H1 related to the hybrids.   
+In this example, the hybrid is a treatment, so we can build a hypothesis on this treatment:   
+\begin{align*}
+& H_0: \text{the mean leaf protein content is equal across all the hybrids} \\
+& H_1: \text{at least one mean differs}
+\end{align*}
+
+<!-- \begin{align*} -->
+<!-- & H_0: \text{the mean leaf protein content is equal across all the blocks} \\ -->
+<!-- & H_1: \text{at least one mean differs} -->
+<!-- \end{align*} -->
+
+b) Check the basic assumptions at 5% probability for the purpose of performing the ANAVA (normality of errors: Q-Q Plot; additivity of effects: Tukey test; homoscedasticity: Anscombe and Tukey test (1963)). Interpret the results. Perform the analysis of variance (ANAVA).   
+
+Firstly, let's see whether using a blocking effect reduces error variance.   
+```{r}
+fit <- aov(protein ~ hybrid, data = df_long)
+summary(fit)
+```
+
+
+```{r}
+fit_block <- aov(protein ~ hybrid + block, data = df_long)
+summary(fit_block)
+```
+
+Adding a blocking effect is useful to reduce error variance. In fact, without a blocking effect the treatment effect would not be significant at a significance level of $\alpha = 0.05$ because $\text{p-value} = 0.0642 > \alpha$. Let's check the assumptions of ANOVA now:   
+```{r, fig.asp = 1.1, fig.width = 5.3, fig.align = 'center'}
+par(mfrow = c(2, 2))
+plot(fit, which = 5)
+plot(fit, which = 1)
+plot(fit, which = 2)
+plot(residuals(fit_block) ~ rownames(df_long), main = 'Residuals vs Exp. Unit', 
+     font.main = 1, data = df_long, xlab = 'Experimental unit', ylab = 'Residuals')
+abline(h = 0, lty = 2)
+```
+
+Some hybrids have a lower variance than others.    
+```{r}
+
+```
+
+The Q-Q plot shows that the central points are around the line but there are some points in the tails more far away from the line.     
+```{r}
+shapiro.test(fit_block$residuals)
+```
+The residuals are normally distributed using a significance level of $\alpha = 0.05$, i.e. we don't reject the null hypothesis that the residuals are normally distributed.      
+
+The Residual VS experimental Units plots shows an horizontal pattern across the zero, which is good.   
+
+c) Which hybrid performed best?   
+```{r}
+
+```
+
+
+d) Create a graph that shows the performance of different hybrids.      
+```{r}
+
+```
+
+
+
+
+
 
