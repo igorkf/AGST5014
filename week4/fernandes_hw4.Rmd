@@ -1,0 +1,52 @@
+---
+title: "Homework 4"
+author: "Igor Kuivjogi Fernandes"
+date: "2023-02-16"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+### 1 The ANOVA from a randomized complete block experiment output is shown below. In this experiment, 30 experimental units were evaluated.   
+```{r, echo=FALSE, results='asis'}
+table <- '
+|   Source  |    SS   | DF |   MS   |   F   | P |
+|:---------:|:-------:|:--:|:------:|:-----:|:-:|
+| Treatment | 1010.56 |  4 |    -   | 29.84 | - |
+|   Block   |    -    |  - | 64.765 |   -   | - |
+|   Error   |  169.33 | 20 |    -   |       |   |
+|   Total   | 1503.71 |  - |        |       |   |
+'
+cat(table)
+```
+
+a) Fill in the blanks. 
+```{r}
+pf(q = 29.84, df1 = 4, df2 = 20, lower.tail = F)  # for treatment
+```
+
+```{r}
+pf(q = 7.64956, df1 = 5, df2 = 20, lower.tail = F)  # for block
+```
+
+
+```{r, echo=FALSE, results='asis'}
+table <- '
+|   Source  |    SS   | DF |   MS   |   F   |       P      |
+|:---------:|:-------:|:--:|:------:|:-----:|:------------:|
+| Treatment | 1010.56 |  4 | 252.64 | 29.84 | 3.544848e-08 |
+|   Block   | 323.82  |  5 | 64.765 |7.64956| 0.0003688504 |
+|   Error   | 169.33  | 20 | 8.4665 |       |              |
+|   Total   | 1503.71 | 29 |        |       |              |
+'
+cat(table)
+```
+
+
+b) How many blocks were used in this experiment?      
+$6$ blocks   
+
+c) What conclusions can you draw?       
+
