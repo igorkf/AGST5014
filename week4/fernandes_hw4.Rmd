@@ -75,14 +75,9 @@ In this example, the hybrid is a treatment, so we can build a hypothesis on this
 & H_1: \text{at least one mean differs}
 \end{align*}
 
-<!-- \begin{align*} -->
-<!-- & H_0: \text{the mean leaf protein content is equal across all the blocks} \\ -->
-<!-- & H_1: \text{at least one mean differs} -->
-<!-- \end{align*} -->
-
 b) Check the basic assumptions at 5% probability for the purpose of performing the ANAVA (normality of errors: Q-Q Plot; additivity of effects: Tukey test; homoscedasticity: Anscombe and Tukey test (1963)). Interpret the results. Perform the analysis of variance (ANAVA).   
 
-Firstly, let's see whether using a blocking effect reduces error variance.   
+First, let's see whether using a blocking effect reduces error variance:   
 ```{r}
 fit <- aov(protein ~ hybrid, data = df_long)
 summary(fit)
@@ -95,42 +90,41 @@ summary(fit_block)
 ```
 
 Adding a blocking effect is useful to reduce error variance. In fact, without a blocking effect the treatment effect would not be significant at a significance level of $\alpha = 0.05$ because $\text{p-value} = 0.0642 > \alpha$. Let's check the assumptions of ANOVA now:   
-```{r, fig.asp = 1.1, fig.width = 5.3, fig.align = 'center'}
-par(mfrow = c(2, 2))
-plot(fit, which = 5)
-plot(fit, which = 1)
-plot(fit, which = 2)
-plot(residuals(fit_block) ~ rownames(df_long), main = 'Residuals vs Exp. Unit', 
-     font.main = 1, data = df_long, xlab = 'Experimental unit', ylab = 'Residuals')
-abline(h = 0, lty = 2)
-```
-
-Some hybrids have a lower variance than others.    
 ```{r}
-
+plot(fit_block, which = 5)
+```
+For the Levene's test, the null hypothesis is that the variances are equal across different levels.
+```{r}
+car::leveneTest(protein ~ hybrid, data = df_long)
 ```
 
-The Q-Q plot shows that the central points are around the line but there are some points in the tails more far away from the line.     
+From the plot, we can see that the variance are homogeneous across the different levels. From the Levene's test, we don't reject the null hypothesis that the variances are equal using a significance level of $\alpha = 0.05$.   
+
+```{r}
+plot(fit_block, which = 2)
+```
+
+For the Shapiro Wilk test, the null hypothesis in this case is that the residuals come from a normal distribution.    
 ```{r}
 shapiro.test(fit_block$residuals)
 ```
-The residuals are normally distributed using a significance level of $\alpha = 0.05$, i.e. we don't reject the null hypothesis that the residuals are normally distributed.      
+The Q-Q plot shows that the central points are around the line but there are some points in the tails more far away from the line. From the test, we conclude that the residuals are normally distributed using a significance level of $\alpha = 0.05$, i.e. we don't reject the null hypothesis that the residuals are normally distributed.  
 
-The Residual VS experimental Units plots shows an horizontal pattern across the zero, which is good.   
-
-c) Which hybrid performed best?   
+Let's now check the additivity of effects using the tukey test for additivite effects:
 ```{r}
-
+daewr::Tukey1df(data.frame(df_long$protein, df_long$hybrid, df_long$block))
 ```
+We reject the null hypothesis that the effects are additive, i.e. we can see that there's interaction between the treatment and the block using a significance level of $\alpha = 0.05$.   
 
+c) Which hybrid performed best?       
+```{r}
+lsmeans::lsmeans(fit, ~hybrid)
+```
+The hybrid with the highest protein mean (i.e. performed the best) was the 3rd one.      
 
 d) Create a graph that shows the performance of different hybrids.      
 ```{r}
-
+boxplot(protein ~ hybrid, data = df_long)
 ```
-
-
-
-
 
 
