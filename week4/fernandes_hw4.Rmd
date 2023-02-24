@@ -127,4 +127,138 @@ d) Create a graph that shows the performance of different hybrids.
 boxplot(protein ~ hybrid, data = df_long)
 ```
 
+### 3 [Use data set: HW4_Q3.csv] The investigators (K. Blenk, M. Chen, G. Evans, J. Chen Ibinson, J. Lamack, and E. Scott, 2000) planned an experiment to investigate how rapid-rise yeast and regular yeast differ in terms of their rate of rising. They were also interested in finding out whether temperature had a significant effect on the rising rate. For each observation, 0.3 gm of yeast and 0.45 gm of sugar were mixed and added to a test tube, together with 6 ml of water. The test tube was placed into a water bath of a specified temperature. The level (height) of the mixture in the test tube was recorded immediately and then again after 15 minutes. Each response is the percentage gain in the height of the mixture in the test tube after 15 minutes. There were three treatment factors:
+
+- Factor C: Initial temperature of water mixed with the yeast and flour (3 levels: 100◦F, 115◦F, 130◦F)     
+- Factor D: Type of yeast (2 levels: Rapid rise, Regular)     
+- Factor E: Temperature of water bath (2 levels: 70◦F, 85◦F)     
+
+a) Explain in at most two sentences why the treatment combinations should be randomly ordered in each block before measurements.     
+The idea of using a block is to control the error. If you know a priori that there's some factor affecting your experiment but this effect is not intended to be analysed you can use it as a block to control the variance. The block controls the variance by grouping more homogeneous experimental units inside the same block, so inside each block you have to randomize the samples to account for independence of experimental units. If you don't randomize the experimental units within each block, you could favor some levels to be in a specific (e.g. spatially) portion of a block.     
+
+b) Obtain the analysis of variance table and explain what conclusions you can draw from it.
+```{r}
+df <- read.csv('HW4_Q3.csv')
+df_long <- reshape(
+  df, 
+  direction = 'long', 
+  idvar = c('water', 'yeast', 'bath'), 
+  varying = c('block1', 'block1.1', 'block3'), 
+  timevar = 'block', 
+  v.names = 'rising'
+)
+rownames(df_long) <- 1:nrow(df_long)
+df_long$water <- as.factor(df_long$water)
+df_long$yeast <- as.factor(df_long$yeast)
+df_long$bath <- as.factor(df_long$bath)
+df_long$block <- as.factor(df_long$block)
+tibble::glimpse(df_long)
+```
+
+```{r}
+fit <- aov(rising ~ water * yeast * bath + block, data = df_long)
+summary(fit)
+```
+
+The "bath" effect is significant, but all his related interactions "water:bath" and "water:yeast:bath" are not.   
+   
+The "water" effect is not significant, neither all his related interactions "water:yeast", "water:yeast", "water:bath", and "water:yeast:bath", so the "water" factor is not being significant at all.   
+
+Although the "yeast" effect is not significant, the interaction effect "yeast:bath" is significant so I would keep it in the model.   
+
+c) Create a figure that illustrates the effect of the factor "water". 
+```{r}
+boxplot(rising ~ water, data = df_long)
+```
+
+The water seems not to be affecting the rate of rising, as we just saw in the ANOVA results, although the 3rd water level has a slightly larger rate rising median.    
+
+```{r}
+with(df_long, {interaction.plot(water, yeast, rising, type = 'b',
+                           pch = c(1, 2), leg.bty = 'o',
+                           main = 'Interaction Plot of Water and Yeast',
+                           xlab = 'Water', ylab = 'Rate rising (%)',
+                           trace.label = 'Yeast')})
+```
+
+The interaction plot between "water" and "yeast" agrees with the ANOVA results: there are not interaction between them because the lines are quite parallel.   
+
+```{r}
+with(df_long, {interaction.plot(water, bath, rising, type = 'b',
+                           pch = c(1, 2), leg.bty = 'o',
+                           main = 'Interaction Plot of Water and Bath',
+                           xlab = 'Water', ylab = 'Rate rising (%)',
+                           trace.label = 'Bath')})
+```
+
+The same occurs for "water" and "bath" terms, i.e., there's no interaction effect.   
+
+### 4 The data set presented in HW4_Q4.csv comes from an experiment that aimed to evaluate the effect of three doses of herbicide and four different fertilizers on yield. It is a factorial CRD. Run the proper analysis and make interpretations.   
+```{r}
+df <- read.csv('HW4_Q4.csv')
+df$yield <- abs(df$yield)  # fix one negative response point 
+df$herbicide_dose <- as.factor(df$herbicide_dose)
+df$fertilizer <- as.factor(df$fertilizer)
+tibble::glimpse(df)
+```
+
+```{r}
+with(df, table(herbicide_dose, fertilizer))
+```
+
+We have the same number of replications for each combination level.      
+
+Let's see how each factor seems to be affecting the yield:    
+```{r}
+boxplot(yield ~ herbicide_dose, data = df)
+```
+
+Seems that as you increase the herbicide dose, the yield decreases.   
+
+```{r}
+boxplot(yield ~ fertilizer, data = df)
+```
+
+The type of fertilizer seems to be important to the mean yield as well. 
+
+What about the interactions?      
+```{r}
+with(df, {interaction.plot(herbicide_dose, fertilizer, yield, type = 'b',
+                           pch = c(1, 2, 3, 4), leg.bty = 'o',
+                           main = 'Interaction Plot of Herbicide Dose and Fertilizer',
+                           xlab = 'Herbicide dose', ylab = 'Yield',
+                           trace.label = 'Fertilizer')})
+```
+
+There seems to be an interaction effect as well, because as long you increase the herbicide dose the yield decreases in different rates depending on the fertilizer type.   
+
+Let's check the significance of effects with an ANOVA:   
+```{r}
+fit <- aov(yield ~ herbicide_dose * fertilizer, data = df)
+summary(fit)
+```
+
+The ANOVA results confirms all the interpretations for the aforementioned plots: both treatments and the interaction are significant using a significance level of $\alpha = 0.05$ because all the $p-values < \alpha$.   
+
+What about the residuals?   
+```{r, fig.asp = 1.1, fig.width = 5.3, fig.align = 'center'}
+par(mfrow = c(2, 2))
+plot(fit, which = 5)
+plot(fit, which = 1)
+plot(fit, which = 2)
+plot(residuals(fit) ~ plot, main = 'Residuals vs Exp. Unit', 
+     font.main = 1, data = df, xlab = 'Experimental unit', ylab = 'Residuals')
+abline(h = 0, lty = 2)
+```
+
+The residuals seems to have homogeneous variance across different herbicide doses.       
+The Q-Q plot shows some lines getting away from the Q-Q line.       
+The Residuals vs Experiment Unit plot shows a very good horizontal pattern, i.e. which shows an independence of experimental units.    
+In general, I would say the model adequacy is good.     
+
+### 5 A researcher wants to conduct an experiment to evaluate the effect of irrigation and cover crops on rice yield. Three levels of irrigation were selected (1, 2, and 3 irrigations/per week). Four cover crops were selected (A, B, C, D).  They would like to use three replicates. There is a gradient of fertility in the field making it slightly heterogeneous. With the information above, design the proper experiment.  Made up some data to analyze this experiment and present the design and the analysis below.   
+```{r}
+
+```
+
 
