@@ -1,7 +1,7 @@
 ---
 title: "Homework 4"
 author: "Igor Kuivjogi Fernandes"
-date: "2023-02-16"
+date: "`r Sys.Date()`"
 output: pdf_document
 ---
 
@@ -44,13 +44,12 @@ table <- '
 cat(table)
 ```
 
-
 b) How many blocks were used in this experiment?      
 $6$ blocks   
 
 c) What conclusions can you draw?         
 The treatment effect is significant when at a significance level of $\alpha = 0.05$.       
-The blocking effect in this case is useful to reduce the error sum of squares.       
+The block seems to be useful to reduce the error SS as $\text{MS}_{\text{block}}$ is way bigger than \text{MS}_{\text{error}}.
 
 ### 2 An experiment with 12 hybrids of Brachiaria spp was carried out in a randomized block design with three replications. The variable measured was the leaf protein content (P %).   
 ```{r}
@@ -89,32 +88,37 @@ fit_block <- aov(protein ~ hybrid + block, data = df_long)
 summary(fit_block)
 ```
 
-Adding a blocking effect is useful to reduce error variance. In fact, without a blocking effect the treatment effect would not be significant at a significance level of $\alpha = 0.05$ because $\text{p-value} = 0.0642 > \alpha$. Let's check the assumptions of ANOVA now:   
+Adding a blocking effect is useful to reduce error variance. In fact, without a blocking effect the treatment effect would not be significant at a significance level of $\alpha = 0.05$ because $\text{p-value} = 0.0642 > \alpha$.
+
+Let's now check the additivity of effects using the Tukey test for additivity effects:
 ```{r}
-plot(fit_block, which = 5)
+daewr::Tukey1df(data.frame(df_long$protein, df_long$hybrid, df_long$block))
 ```
+
+We reject the null hypothesis that the effects are additive, i.e. we can see that there's interaction between the treatment and the block using a significance level of $\alpha = 0.05$.   
+We would want an additive model without interaction between the factor and the block, but let's continue the assumptions for ANOVA now.   
+
 For the Levene's test, the null hypothesis is that the variances are equal across different levels.
 ```{r}
 car::leveneTest(protein ~ hybrid, data = df_long)
 ```
 
-From the plot, we can see that the variance are homogeneous across the different levels. From the Levene's test, we don't reject the null hypothesis that the variances are equal using a significance level of $\alpha = 0.05$.   
-
 ```{r}
-plot(fit_block, which = 2)
+plot(fit_block, which = 5)
 ```
+
+From the plot, we can see that the variance are homogeneous across the different levels. From the Levene's test, we don't reject the null hypothesis that the variances are equal using a significance level of $\alpha = 0.05$.   
 
 For the Shapiro Wilk test, the null hypothesis in this case is that the residuals come from a normal distribution.    
 ```{r}
 shapiro.test(fit_block$residuals)
 ```
-The Q-Q plot shows that the central points are around the line but there are some points in the tails more far away from the line. From the test, we conclude that the residuals are normally distributed using a significance level of $\alpha = 0.05$, i.e. we don't reject the null hypothesis that the residuals are normally distributed.  
 
-Let's now check the additivity of effects using the tukey test for additivite effects:
 ```{r}
-daewr::Tukey1df(data.frame(df_long$protein, df_long$hybrid, df_long$block))
+plot(fit_block, which = 2)
 ```
-We reject the null hypothesis that the effects are additive, i.e. we can see that there's interaction between the treatment and the block using a significance level of $\alpha = 0.05$.   
+
+The Q-Q plot shows that the central points are around the line but there are some points in the tails more far away from the line. From the test, we conclude that the residuals are normally distributed using a significance level of $\alpha = 0.05$, i.e. we don't reject the null hypothesis that the residuals are normally distributed.  
 
 c) Which hybrid performed best?       
 ```{r}
@@ -166,32 +170,32 @@ The "water" effect is not significant, neither all his related interactions "wat
 
 Although the "yeast" effect is not significant, the interaction effect "yeast:bath" is significant so I would keep it in the model.   
 
-c) Create a figure that illustrates the effect of the factor "water". 
+c) Create a figure that illustrates the effect of the factor "bath". 
 ```{r}
-boxplot(rising ~ water, data = df_long)
+boxplot(rising ~ bath, data = df_long)
 ```
 
-The water seems not to be affecting the rate of rising, as we just saw in the ANOVA results, although the 3rd water level has a slightly larger rate rising median.    
+The differences in rate rising means are big. For bath = 1 we have percentages from 0-20% (with an outlier near the 40%), whereas for bath = 2 the percentage is way larger: 20 to almost 100%.   
 
 ```{r}
-with(df_long, {interaction.plot(water, yeast, rising, type = 'b',
+with(df_long, {interaction.plot(bath, yeast, rising, type = 'b',
                            pch = c(1, 2), leg.bty = 'o',
-                           main = 'Interaction Plot of Water and Yeast',
-                           xlab = 'Water', ylab = 'Rate rising (%)',
+                           main = 'Interaction Plot of Bath and Yeast',
+                           xlab = 'Bath', ylab = 'Rate rising (%)',
                            trace.label = 'Yeast')})
 ```
 
-The interaction plot between "water" and "yeast" agrees with the ANOVA results: there are not interaction between them because the lines are quite parallel.   
+The interaction plot between "bath" and "yeast" agrees with the ANOVA results: there is an interaction effect between bath and yeast.   
 
 ```{r}
-with(df_long, {interaction.plot(water, bath, rising, type = 'b',
+with(df_long, {interaction.plot(bath, water, rising, type = 'b',
                            pch = c(1, 2), leg.bty = 'o',
-                           main = 'Interaction Plot of Water and Bath',
-                           xlab = 'Water', ylab = 'Rate rising (%)',
-                           trace.label = 'Bath')})
+                           main = 'Interaction Plot of Bath and Water',
+                           xlab = 'Bath', ylab = 'Rate rising (%)',
+                           trace.label = 'Water')})
 ```
 
-The same occurs for "water" and "bath" terms, i.e., there's no interaction effect.   
+There seems to be no interaction effect, which agrees with the ANOVA output.      
 
 ### 4 The data set presented in HW4_Q4.csv comes from an experiment that aimed to evaluate the effect of three doses of herbicide and four different fertilizers on yield. It is a factorial CRD. Run the proper analysis and make interpretations.   
 ```{r}
@@ -254,11 +258,95 @@ abline(h = 0, lty = 2)
 The residuals seems to have homogeneous variance across different herbicide doses.       
 The Q-Q plot shows some lines getting away from the Q-Q line.       
 The Residuals vs Experiment Unit plot shows a very good horizontal pattern, i.e. which shows an independence of experimental units.    
-In general, I would say the model adequacy is good.     
+In general, I would say the model adequacy is good although a slightly deviation in the Q-Q plot.   
 
-### 5 A researcher wants to conduct an experiment to evaluate the effect of irrigation and cover crops on rice yield. Three levels of irrigation were selected (1, 2, and 3 irrigations/per week). Four cover crops were selected (A, B, C, D).  They would like to use three replicates. There is a gradient of fertility in the field making it slightly heterogeneous. With the information above, design the proper experiment.  Made up some data to analyze this experiment and present the design and the analysis below.   
+### 5 A researcher wants to conduct an experiment to evaluate the effect of irrigation and cover crops on rice yield. Three levels of irrigation were selected (1, 2, and 3 irrigations/per week). Four cover crops were selected (A, B, C, D). They would like to use three replicates. There is a gradient of fertility in the field making it slightly heterogeneous. With the information above, design the proper experiment. Made up some data to analyze this experiment and present the design and the analysis below.   
+
+Let's assume there are 3 subgroups in this population, so we can use 3 blocks.
 ```{r}
+set.seed(2023)
+irrigation <- as.factor(c(1, 2, 3))
+cover_crops <- as.factor(c('A', 'B', 'C', 'D'))
+grid <- expand.grid(irrigation = irrigation, cover_crops = cover_crops)  # all possible combinations
+grid <- rbind(grid, grid, grid)  # 3 reps
 
+# first block
+b1 <- grid
+b1$block <- 1
+b1 <- b1[sample(1:nrow(b1)), ]  # randomize within block 1
+b1$yield <- rnorm(nrow(b1), mean = 5, sd = 1.9)
+
+# second block
+b2 <- grid
+b2$block <- 2
+b2 <- b2[sample(1:nrow(b2)), ]  # randomize within block 2
+b2$yield <- rnorm(nrow(b2), mean = 8, sd = 1.85)
+
+# third block
+b3 <- grid
+b3$block <- 3
+b3 <- b3[sample(1:nrow(b3)), ]  # randomize within block 3
+b3$yield <- rnorm(nrow(b3), mean = 12, sd = 1.95)  # the third block favors the yield
+
+# bind blocks
+df <- rbind(b1, b2, b3)
+rownames(df) <- 1:nrow(df)
+df$block <- as.factor(df$block)
+
+# now we can generate specific scenarios for yield across factor combinations
+df[(df$irrigation == 1) & (df$cover_crops == 'A'), 'yield'] <- df[
+  (df$irrigation == 1) & (df$cover_crops == 'A'), 'yield'
+] * 0.8
+
+df[(df$irrigation == 2) & (df$cover_crops == 'C'), 'yield'] <- df[
+  (df$irrigation == 2) & (df$cover_crops == 'C'), 'yield'
+] * 1.2
+
+df[(df$irrigation == 3) & (df$cover_crops == 'D'), 'yield'] <- df[
+  (df$irrigation == 3) & (df$cover_crops == 'D'), 'yield'
+] * 1.4
+
+summary(df$yield)  # yield distribution
+tibble::glimpse(df)
 ```
 
+We have 108 rows (36 rows per each block).   
+Note I favored yield for some factor combinations (e.g. when irrigation = 1 and cover crops = A the yield is lower, whereas for irrigation = 3 and cover crops = D the yield is way bigger. For this reason, we should expect significant
+factors.   
+As we have a gradient, we could expect that this gradient affects the yield, so we generate fake yield within each block. In this way, we expect that the block helps to account for the error control.
+```{r}
+with(df, {interaction.plot(irrigation, cover_crops, yield, type = 'b',
+                           pch = c(1, 2, 3, 4), leg.bty = 'o',
+                           main = 'Interaction Plot of Irrigation and Cover crops',
+                           xlab = 'Irrigation (# irrigations/per week)', ylab = 'Yield',
+                           trace.label = 'Cover crops')})
+```
+
+The interaction seems to be present.    
+We know there's a gradient in the field, so we expect the block to be useful for error control.   
+ANOVA without block:
+```{r}
+fit <- aov(yield ~ irrigation * cover_crops, data = df)
+summary(fit)
+```
+
+ANOVA with block:
+```{r}
+fit_block <- aov(yield ~ irrigation * cover_crops + block, data = df)
+summary(fit_block)
+```
+
+We can see that before including the blocks, we would say that all the effects (irrigation, cover_crops, and the interaction) would not be significant. However, when including the block the irrigation and interaction turns to be significant, although cover_crops is not (but the interaction is).      
+We can also see that the block reduced the error SS, being useful for controlling the error.   
+
+```{r, fig.asp = 1.1, fig.width = 5.3, fig.align = 'center'}
+par(mfrow = c(2, 2))
+plot(fit_block, which = 5)
+plot(fit_block, which = 1)
+plot(fit_block, which = 2)
+plot(residuals(fit_block) ~ rownames(df), main = 'Residuals vs Exp. Unit', 
+     font.main = 1, data = df, xlab = 'Experimental unit', ylab = 'Residuals')
+abline(h = 0, lty = 2)
+```
+There is homogeneity of variance across treatment levels, the residuals are normal and they show horizontal pattern across the different experimental unit.   
 
