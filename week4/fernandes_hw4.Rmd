@@ -311,7 +311,22 @@ tibble::glimpse(df)
 ```
 
 We have 108 rows (36 rows per each block).   
-Note I favored yield for some factor combinations (e.g. when irrigation = 1 and cover crops = A the yield is lower, whereas for irrigation = 3 and cover crops = D the yield is way bigger. For this reason, we should expect significant
+
+```{r}
+boxplot(yield ~ block, data = df)
+```
+The yield distribution is being affected by the block. 
+
+```{r}
+boxplot(yield ~ irrigation, data = df)
+```
+
+
+```{r}
+boxplot(yield ~ cover_crops, data = df)
+```
+
+Note I favored yield for some factor combinations, e.g. when irrigation = 1 and cover crops = A the yield is lower, whereas for irrigation = 3 and cover crops = D the yield is way bigger. For this reason, we should expect significant
 factors.   
 As we have a gradient, we could expect that this gradient affects the yield, so we generate fake yield within each block. In this way, we expect that the block helps to account for the error control.
 ```{r}
