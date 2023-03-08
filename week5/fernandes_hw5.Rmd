@@ -1,0 +1,67 @@
+---
+title: "Homework 5 - AGST 5014"
+author: "Igor Kuivjogi Fernandes and Ashmita Uphadhay"
+date: "`r Sys.Date()`"
+output: pdf_document
+---
+
+
+__1.	The following data set has 2 mistakes. Find the issue and analyze the experiment.__  
+__Include all the necessary analysis and interpretation__
+```{r}
+q1 <- read.csv("HW5_Q1.csv")
+q1$row <- as.factor(q1$row)
+q1$col <- as.factor(q1$col)
+q1$rep <- as.factor(q1$rep)
+q1$cultivar <- as.factor(q1$cultivar)
+q1$fertilizer_application <- as.factor(q1$fertilizer_application)
+str(q1)
+```
+
+
+```{r}
+plot(q1$plot)
+```
+
+The plot 160 should be labelled as 60, and the plot 60 should be labelled as 160.   
+
+```{r, warning = F}
+desplot::desplot(
+  q1,
+  rep ~ col * row,
+  cex = 1,
+  text = cultivar,
+  out1 = cultivar
+)
+```
+
+The row 5 with columns 21 to 25 should be labelled as rep 3 rather than rep 5.     
+The row 8 with columns 1 to 5 should be labelled as rep 3 rather than rep 3, otherwise cultivar 20 would be present twice within rep 4.    
+The row 10 with columns 20 to 24 should be labelled as rep 5 rather than rep 2.   
+Fixing this, now each cultivar appears only once in each rep.   
+
+__2.	Design an experiment to answer the following questions (Attach the CSV file__
+__and include below a figure with the layout of your experiment):__  
+
+a) Does increasing the dose of nitrogen affect yield? Does it depend on the 
+frequency of irrigation? or on the cultivar? In the allocated field, I have some areas
+that are more fertile than others. I have resources for a total of 90 EU.  
+
+b) Is there a variation in bacteria/fungus growth with different agar types 
+(semi-solid, gel-like state)? I have 30 plates (experimental unit) available.
+
+__3.The data set `mcconway.turnip` from the package `agridat` presents us with an RCBD__
+__experiment of turnips with 16 treatments allocated at random to each of four blocks __
+__The 16 treatments were combinations of two varieties, two planting dates, and four densities.__
+a) Run anova as usual. Are the requirements met?
+b) Run a mixed model considering block as a random term. 
+c) If there is any issue with the data that result in not meeting the ANOVA 
+assumptions, use a mixed model to solve it.
+
+```{r, message=FALSE}
+library(tidyverse)
+q3 <- agridat::mcconway.turnip %>%
+  as_tibble() %>%
+  mutate(densf = density %>% as.factor)
+```
+
