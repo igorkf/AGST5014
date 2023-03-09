@@ -1,6 +1,6 @@
 ---
 title: "Homework 5 - AGST 5014"
-author: "Igor Kuivjogi Fernandes and Ashmita Uphadhay"
+author: "Igor Kuivjogi Fernandes and Ashmita Upadhyay"
 date: "`r Sys.Date()`"
 output: pdf_document
 ---
@@ -9,18 +9,21 @@ output: pdf_document
 __1.	The following data set has 2 mistakes. Find the issue and analyze the experiment.__  
 __Include all the necessary analysis and interpretation__
 ```{r}
-q1 <- read.csv("HW5_Q1.csv")
-q1$row <- as.factor(q1$row)
-q1$col <- as.factor(q1$col)
-q1$rep <- as.factor(q1$rep)
-q1$cultivar <- as.factor(q1$cultivar)
-q1$fertilizer_application <- as.factor(q1$fertilizer_application)
+q1 <- read.csv("HW5_Q1_fixed.csv")
+q1$fertilizer_application <- NULL
+q1$rep <- NULL
+factor_cols <- c("row", "column", "cultivar", "fer", "block")
+q1[factor_cols] <- lapply(q1[factor_cols], as.factor)
 str(q1)
 ```
 
+We have 12 rows and 25 columns.
 
 ```{r}
-plot(q1$plot)
+plot(q1$plot, xlab = 'index', ylab = 'plot')
+```
+```{r}
+q1[rownames(q1) %in% c(60, 160), ]
 ```
 
 The plot 160 should be labelled as 60, and the plot 60 should be labelled as 160.   
@@ -28,40 +31,344 @@ The plot 160 should be labelled as 60, and the plot 60 should be labelled as 160
 ```{r, warning = F}
 desplot::desplot(
   q1,
-  rep ~ col * row,
-  cex = 1,
+  block ~ column * row,
+  cex = 0.7,
   text = cultivar,
-  out1 = cultivar
+  out1 = cultivar,
+  ticks = T
 )
 ```
 
-The row 5 with columns 21 to 25 should be labelled as rep 3 rather than rep 5.     
-The row 8 with columns 1 to 5 should be labelled as rep 3 rather than rep 3, otherwise cultivar 20 would be present twice within rep 4.    
-The row 10 with columns 20 to 24 should be labelled as rep 5 rather than rep 2.   
-Fixing this, now each cultivar appears only once in each rep.   
+The row 5 with columns 21 to 25 should be labelled as block 3 rather than block 5.     
+The row 8 with columns 1 to 5 should be labelled as block 3 rather than block 4.    
+The row 10 with columns 20 to 24 should be labelled as block 5 rather than block 2.     
+Fixing this, now each cultivar appears only once within each block.   
+
+Fixing errors:
+```{r}
+q1_fixed <- q1
+
+# fixing plots
+q1_fixed[rownames(q1_fixed) == 60, 'plot'] <- 60
+q1_fixed[rownames(q1_fixed) == 160, 'plot'] <- 160
+
+# fixing blocks
+q1_fixed[(q1_fixed$row == 5) & (q1_fixed$column %in% 21:25), 'block'] <- 3
+q1_fixed[(q1_fixed$row == 8) & (q1_fixed$column %in% 1:5), 'block'] <- 3
+q1_fixed[(q1_fixed$row == 10) & (q1_fixed$column %in% 20:24), 'block'] <- 5
+```
+
+
+```{r, warning = F}
+desplot::desplot(
+  q1_fixed,
+  block ~ column * row,
+  cex = 0.7,
+  text = cultivar,
+  out1 = cultivar,
+  ticks = T
+)
+```
+
+```{r}
+table(q1_fixed$block, q1_fixed$cultivar, dnn = c('block', 'cultivar'))
+```
+
+Now we have the 3 eu's for each block/cultivar combination.   
+
+*****
+
+Let's do the analysis now.   
+
+```{r}
+boxplot(y ~ block, data = q1_fixed)
+```
+
+The yield has very similar distribution between blocks.   
+
+```{r}
+boxplot(y ~ cultivar, data = q1_fixed)
+```
+
+Some cultivar (e.g. 1, 2, and 5) had a larger yield than others.    
+
+```{r}
+boxplot(y ~ fer, data = q1_fixed)
+```
+
+The yield in May was larger than the other months.   
+
+```{r}
+with(q1_fixed, {interaction.plot(fer, cultivar, y, type = 'b',
+                           pch = 1:20, leg.bty = 'o',
+                           main = 'Interaction Plot of Fertilizer application and Cultivar',
+                           xlab = 'Fertilizer application', ylab = 'Yield',
+                           trace.label = 'Cultivar')})
+```
+
+When comparing June and May, for example, the Cultivar 2 had a larger yield difference when comparing to other cultivars, so seems there's an interaction between cultivar and fertilizer application.  
+
+Let's fit an ANOVA now:     
+```{r}
+fit <- aov(y ~ cultivar * fer + block, data = q1_fixed)
+summary(fit)
+```
+
+Using an significance level of $\alpha = 0.05$, the cultivar, fertilizer application, and the interaction are significant, because all the p-values are lower than $\alpha$.     
+```{r, fig.asp = 1.1, fig.width = 5.3, fig.align = 'center'}
+par(mfrow = c(2, 2))
+plot(fit, which = 5)
+plot(fit, which = 1)
+plot(fit, which = 2)
+plot(residuals(fit) ~ plot, main = 'Residuals vs Exp. Unit', 
+     font.main = 1, data = q1_fixed, xlab = 'Experimental unit', ylab = 'Residuals')
+abline(h = 0, lty = 2)
+```
+
+The homogeneous of variance between different cultivar levels seems to be present.   
+We have a horizontal pattern across the experimental units.    
+The normality of residuals was not met, maybe because the yield distribution is very skewed but we don't know whether the big values (from May fertilizer application) of yield are outliers or not. Maybe we could try to transform the data or use a GLM, for example, but we will stick with this model.   
+
+We can do a Tukey's test of multiple comparison to check the best cultivar:     
+```{r}
+ExpDes::tukey(q1_fixed$y, q1_fixed$cultivar, DFerror = 236, SSerror = 213971)
+```
+
+The cultivar 2 has a higher mean yield than all the others, using a significance level of $\alpha = 0.05$.    
 
 __2.	Design an experiment to answer the following questions (Attach the CSV file__
 __and include below a figure with the layout of your experiment):__  
 
 a) Does increasing the dose of nitrogen affect yield? Does it depend on the 
 frequency of irrigation? or on the cultivar? In the allocated field, I have some areas
-that are more fertile than others. I have resources for a total of 90 EU.  
+that are more fertile than others. I have resources for a total of 90 EU.    
+Let's say we have two doses of nitrogen 1 and 2, frequency of irrigation 0 and 10, 5 different cultivars, and a block to account for 3 subgroups (different fertile area gradients).      
+```{r}
+set.seed(2023)
+grid <- expand.grid(nitrogen = 1:2, freq_irrigation = c(0, 10, 20), cultivar = 1:5)
+
+# randomize block 1
+b1 <- grid
+b1$block <- 1
+b1 <- b1[sample(1:nrow(b1)), ]
+b1$row <- 1:nrow(b1)
+b1$col <- 1
+b1$yield <- rnorm(nrow(b1), 10, 1)  # low yield 
+
+# randomize block 2
+b2 <- grid
+b2$block <- 2
+b2 <- b2[sample(1:nrow(b2)), ]
+b2$row <- 1:nrow(b2)
+b2$col <- 2
+b2$yield <- rnorm(nrow(b2), 14, 1.2)  # medium yield 
+
+# randomize block 3
+b3 <- grid
+b3$block <- 3
+b3 <- b3[sample(1:nrow(b3)), ]
+b3$row <- 1:nrow(b3)
+b3$col <- 3
+b3$yield <- rnorm(nrow(b2), 18, 1.1)  # high yield 
+
+# bind all blocks
+exp1 <- rbind(b1, b2, b3)
+rownames(exp1) <- 1:nrow(exp1)
+factors <- c('nitrogen', 'freq_irrigation', 'cultivar', 'block', 'row', 'col')
+exp1[factors] <- lapply(exp1[factors], as.factor)
+
+exp1[exp1$nitrogen == 2, 'yield'] <- (
+  exp1[exp1$nitrogen == 2, 'yield'] + rnorm(sum(exp1$nitrogen == 2), 1, 1)
+)  # nitrogen dose 2 favors yield
+
+exp1[exp1$freq_irrigation == 10, 'yield'] <- (
+  exp1[exp1$freq_irrigation == 10, 'yield'] + rnorm(sum(exp1$freq_irrigation == 10), 1, 1)
+)  # frequency of irrigation 10 favors the yield
+
+exp1[exp1$cultivar == 4, 'yield'] <- (
+  exp1[exp1$cultivar == 4, 'yield'] + rnorm(sum(exp1$cultivar == 4), 2, 1)
+)  # cultivar 4 favors the yield
+```
+
+The layout:
+```{r, warning = F}
+desplot::desplot(
+  exp1,
+  block ~ col * row,
+  text = cultivar,
+  col = nitrogen,
+  cex = 0.7
+)
+```
+
+Each block represent a different fertile area that affects the yield. This effect could be seem using the color as the response:
+```{r, warning = F}
+desplot::desplot(
+  exp1,
+  yield ~ col * row,
+  text = cultivar,
+  col = nitrogen,
+  cex = 0.7
+)
+```
+
+```{r}
+fit <- aov(yield ~ nitrogen * freq_irrigation * cultivar + block, data = exp1)
+summary(fit)
+```
+
+Using a significance level of $\alpha = 0.05$, the dose of nitrogen affects the yield, the frequency of irrigation also affects the yield, so as the cultivar. The interaction 'freq_irrigation:cultivar' is also significant, but the others interactions are not.     
+The block effect was important to control the errors because it has a large mean sum of squares compared to the residuals.       
+In fact, if we do not account for a blocking effect, all the terms would not be significant:   
+```{r}
+summary(aov(yield ~ nitrogen * freq_irrigation * cultivar, data = exp1))
+```
+
+Let's look to the residuals:       
+```{r, fig.asp = 1.1, fig.width = 5.3, fig.align = 'center'}
+par(mfrow = c(2, 2))
+plot(fit, which = 5)
+plot(fit, which = 1)
+plot(fit, which = 2)
+plot(residuals(fit) ~ rownames(exp1), main = 'Residuals vs Exp. Unit', 
+     font.main = 1, data = exp1, xlab = 'Experimental unit', ylab = 'Residuals')
+abline(h = 0, lty = 2)
+```
+
+We have homogeneous of variance between nitrogen doses, the residuals look normal, and there's a horizontal pattern across the experimental units.   
 
 b) Is there a variation in bacteria/fungus growth with different agar types 
-(semi-solid, gel-like state)? I have 30 plates (experimental unit) available.
+(semi-solid, gel-like state)? I have 30 plates (experimental unit) available.    
+
+If we have 30 experimental units and two levels, so the rep is 2.   
+```{r}
+set.seed(2023)
+f <- c(rep('semi-solid', 15), rep('gel-like', 15))
+sampled <- sample(f)
+eu <- 1:length(sampled)
+exp2 <- data.frame(eu = eu, agar = sampled, growth = rnorm(30, 5, 1))
+exp2$agar <- factor(exp2$agar, levels = c('semi-solid', 'gel-like'))  # change level order
+
+# gel-like agar favors yield
+exp2[exp2$agar == 'gel-like', 'growth'] <- (
+  exp2[exp2$agar == 'gel-like', 'growth'] + rnorm(15, 1, 1)
+)  
+
+# normalize growth to the interval [0, 1]
+exp2$growth <- exp2$growth / max(exp2$growth)
+str(exp2)
+```
+
+Let's do the analysis.
+```{r}
+boxplot(growth ~ agar, data = exp2)
+```
+
+The bacteria growth for gel-like agar is larger than for semi-solid.   
+Fitting an one-way ANOVA:
+```{r}
+fit <- aov(growth ~ agar, data = exp2)
+summary(fit)
+```
+
+The agar type affects the bacteria growth, using an significance level of $\alpha = 0.05$, because the p-value < $\alpha$.      
+Residuals:
+```{r, fig.asp = 1.1, fig.width = 5.3, fig.align = 'center'}
+par(mfrow = c(2, 2))
+plot(fit, which = 5)
+plot(fit, which = 1)
+plot(fit, which = 2)
+plot(residuals(fit) ~ rownames(exp2), main = 'Residuals vs Exp. Unit', 
+     font.main = 1, data = exp2, xlab = 'Experimental unit', ylab = 'Residuals')
+abline(h = 0, lty = 2)
+```
+
+The variances are homogeneous between different agar types, the residuals seems to be normally distributed (although there are some deviance in the tails), and there is a horizontal pattern across the experimental units.   
+```{r}
+shapiro.test(residuals(fit))
+```
+
+The Shapiro-Wilk test confirms the residuals are normally distributed, because the p-value > $\alpha$, using a significance level of $\alpha = 0.05$, which means we do not reject the mull hypothesis that the residuals are normally distributed.    
 
 __3.The data set `mcconway.turnip` from the package `agridat` presents us with an RCBD__
 __experiment of turnips with 16 treatments allocated at random to each of four blocks __
 __The 16 treatments were combinations of two varieties, two planting dates, and four densities.__
-a) Run anova as usual. Are the requirements met?
-b) Run a mixed model considering block as a random term. 
-c) If there is any issue with the data that result in not meeting the ANOVA 
-assumptions, use a mixed model to solve it.
 
+a) Run anova as usual. Are the requirements met?    
 ```{r, message=FALSE}
-library(tidyverse)
-q3 <- agridat::mcconway.turnip %>%
-  as_tibble() %>%
-  mutate(densf = density %>% as.factor)
+q3 <- agridat::mcconway.turnip
+q3[c('gen', 'date', 'density')] <- lapply(q3[c('gen', 'date', 'density')], as.factor)
+str(q3)
 ```
+
+```{r}
+# checking frequency tables
+with(q3, table(gen, date))
+with(q3, table(gen, density))
+with(q3, table(date, density))
+```
+
+The data is balanced.   
+
+```{r}
+boxplot(yield ~ block, data = q3)
+```
+
+For the block B4, we have very low yield compared to the other ones.   
+
+```{r}
+boxplot(yield ~ gen, data = q3)
+```
+
+The yield is slightly higher for Barkant.   
+
+```{r}
+boxplot(yield ~ date, data = q3)
+```
+
+The yield was way larger for the 28 Aug 1990.      
+
+```{r}
+boxplot(yield ~ density, data = q3)
+```
+
+Seems the yield increases as the density increases.   
+
+Let's fit an ANOVA:    
+```{r}
+fit <- aov(yield ~ gen * date * density + block, data = q3)
+summary(fit)
+```
+
+
+```{r, fig.asp = 1.1, fig.width = 5.3, fig.align = 'center'}
+par(mfrow = c(2, 2))
+plot(fit, which = 5)
+plot(fit, which = 1)
+plot(fit, which = 2)
+plot(residuals(fit) ~ rownames(q3), main = 'Residuals vs Exp. Unit', 
+     font.main = 1, data = q3, xlab = 'Experimental unit', ylab = 'Residuals')
+abline(h = 0, lty = 2)
+```
+
+```{r}
+shapiro.test(residuals(fit))
+```
+
+Some residuals points has deviations from the QQ line, but from the Shapiro-Wilk test we do not reject the null hypothesis that the residuals are normally distributed.    
+The residuals seems have homogeneous variance between the varieties, and the residuals show horizontal pattern across the experimental units, using a significance level of $\alpha = 0.05$.      
+One problem is that seems the residual's variance increases as the fitted values increase, so the ANOVA assumptions were not met, although this problem might be solved using a target transformation, for example.     
+    
+b) Run a mixed model considering block as a random term.    
+```{r}
+
+```
+
+
+c) If there is any issue with the data that result in not meeting the ANOVA 
+assumptions, use a mixed model to solve it.    
+```{r}
+
+```
+
 
