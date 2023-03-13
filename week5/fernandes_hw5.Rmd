@@ -125,16 +125,14 @@ plot(residuals(fit) ~ plot, main = 'Residuals vs Exp. Unit',
 abline(h = 0, lty = 2)
 ```
 
-The homogeneous of variance between different cultivar levels seems to be present.   
-We have a horizontal pattern across the experimental units.    
-The normality of residuals was not met, maybe because the yield distribution is very skewed but we don't know whether the big values (from May fertilizer application) of yield are outliers or not. Maybe we could try to transform the data or use a GLM, for example, but we will stick with this model.   
-
-We can do a Tukey's test of multiple comparison to check the best cultivar:     
 ```{r}
-ExpDes::tukey(q1_fixed$y, q1_fixed$cultivar, DFerror = 236, SSerror = 213971)
+shapiro.test(residuals(fit))
 ```
 
-The cultivar 2 has a higher mean yield than all the others, using a significance level of $\alpha = 0.05$.    
+The homogeneous of variance between different cultivar levels seems to be present.    
+The Residuals vs Fitted plot shows we have many fitted values between 0 and 100, and from 100 the residual's variance is larger.
+We have a horizontal pattern across the experimental units.    
+The normality of residuals was not met, maybe because the yield distribution is very skewed but we don't know whether the big values (from May fertilizer application) of yield are outliers or not. Maybe we could try to transform the data or use a GLM, for example.      
 
 __2.	Design an experiment to answer the following questions (Attach the CSV file__
 __and include below a figure with the layout of your experiment):__  
@@ -288,7 +286,7 @@ The variances are homogeneous between different agar types, the residuals seems 
 shapiro.test(residuals(fit))
 ```
 
-The Shapiro-Wilk test confirms the residuals are normally distributed, because the p-value > $\alpha$, using a significance level of $\alpha = 0.05$, which means we do not reject the mull hypothesis that the residuals are normally distributed.    
+The Shapiro-Wilk test confirms the residuals are normally distributed, because the p-value > $\alpha$, using a significance level of $\alpha = 0.05$, which means we do not reject the null hypothesis that the residuals are normally distributed.    
 
 __3.The data set `mcconway.turnip` from the package `agridat` presents us with an RCBD__
 __experiment of turnips with 16 treatments allocated at random to each of four blocks __
@@ -355,20 +353,46 @@ abline(h = 0, lty = 2)
 shapiro.test(residuals(fit))
 ```
 
-Some residuals points has deviations from the QQ line, but from the Shapiro-Wilk test we do not reject the null hypothesis that the residuals are normally distributed.    
-The residuals seems have homogeneous variance between the varieties, and the residuals show horizontal pattern across the experimental units, using a significance level of $\alpha = 0.05$.      
-One problem is that seems the residual's variance increases as the fitted values increase, so the ANOVA assumptions were not met, although this problem might be solved using a target transformation, for example.     
-    
+Some residuals points has deviations from the QQ line, but from the Shapiro-Wilk test we do not reject the null hypothesis that the residuals are normally distributed using a significance level of $\alpha = 0.05$.       
+The residuals seems to have homogeneous variance between the varieties, and the residuals show horizontal pattern across the experimental units.      
+One problem is that seems the residual's variance increases as the fitted values increase (funnel shape pattern), so the ANOVA assumptions were not met, i.e., there's a non linear relationship between fitted values and residuals.    
+
 b) Run a mixed model considering block as a random term.    
 ```{r}
+library(nlme)
 
+mod1.nlme <- lme(
+  fixed = yield ~ gen * date * density,
+  random = ~1 | block,  # block as random
+  weights = NULL,  # homoscedastic errors
+  data = q3
+)
+plot(mod1.nlme)
 ```
 
+We still have a funnel shape for the Residuals VS Fitted values plot.   
 
 c) If there is any issue with the data that result in not meeting the ANOVA 
-assumptions, use a mixed model to solve it.    
-```{r}
+assumptions, use a mixed model to solve it.      
 
+We saw that yield distribution is very different between `date` and `density` levels, so we could use a heterogeneous variances for both factors.    
+```{r}
+# heterogeneous variance for date and density
+# when "form" includes a grouping factor with M > 1 levels, the variance function allows 
+# M different variances, one for each level of the factor
+mod2.nlme <- update(
+  mod1.nlme, 
+  weights = varComb(varIdent(form =  ~1 | date), varIdent(form = ~1 | density))
+)
+plot(mod2.nlme)
+```
+
+Now the Residuals vs Fitted values is way better, showing a horizontal pattern.  
+
+```{r}
+shapiro.test(
+  residuals(mod2.nlme, type = 'pearson')  # standardized residuals
+)  
 ```
 
 
