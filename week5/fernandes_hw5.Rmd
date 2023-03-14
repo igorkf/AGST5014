@@ -375,7 +375,6 @@ We still have a funnel shape for the Residuals VS Fitted values plot.
 c) If there is any issue with the data that result in not meeting the ANOVA 
 assumptions, use a mixed model to solve it.      
 
-We saw that yield distribution is very different between `date` and `density` levels, so we could use a heterogeneous variances for both factors.    
 ```{r}
 # heterogeneous variance for date and density
 # when "form" includes a grouping factor with M > 1 levels, the variance function allows 
