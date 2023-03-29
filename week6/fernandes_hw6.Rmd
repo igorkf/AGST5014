@@ -1,0 +1,98 @@
+---
+title: "Homework 6 - AGST 5014"
+author: "Igor Kuivjogi Fernandes and Ashmita Upadhyay"
+date: "`r Sys.Date()`"
+output: pdf_document
+---
+
+
+__1. With the data set below, answer:__ 
+(another resource on IBD: Chapter 14 - http://users.stat.umn.edu/~gary/book/fcdae.pdf )
+a) Is this a balanced or partially balanced design?  
+```{r}
+data("taste", package = "daewr")
+str(taste)
+```
+
+```{r}
+table(taste$panelist)
+```
+
+We have 12 different panelists, and each one tasted recipes 2 times.      
+Each panelist is a block.   
+
+```{r}
+table(taste$recipe)
+```
+
+We have 4 different recipes, and each one was tasted 6 times.    
+
+```{r}
+with(taste, table(panelist, recipe))
+```
+
+Some panelists didn't prove all the 4 recipes, so this is a **incomplete block design**.        
+Now we have to check whether is balanced or partially balanced.   
+
+We already know each recipe occurred 6 times, but how many times each treatment set within block occurred?   
+If we check all possible two-by-two combinations (AB, AC, AD, BC, BD, CD) within blocks, all of them occurred two times. This means we have a Balanced Incomplete Block (BIB) design.    
+
+```{r, echo = F}
+
+# taste2 <- taste
+# taste2[1, 'recipe'] <- 'B' 
+
+check.bib <- function(data, block, treatment) {
+  
+  block_size <- unique(table(data[, block]))
+  
+  # do we have equal block sizes?
+  # if (length(block_size) != 1) {
+  #   stop('block size is not equal!')
+  # }
+
+  # pick all "block_size" combinations indexes
+  treat_lvls <- unique(data[, treatment])
+  combs_idxs <- combn(1:length(treat_lvls), m = block_size)
+  ncombs <- dim(combs_idxs)[2]
+  freq_table <- table(data[, block], data[, treatment])
+
+  # for each combination, find frequency
+  result <- list()
+  combs <- combn(treat_lvls, m = block_size)
+  for (i in 1:ncombs) {
+    sub_freq_table <- freq_table[, combs_idxs[, i]]
+    result[paste(combs[, i], collapse = '-')] <- sum(rowSums(sub_freq_table) == block_size)
+  }
+  return(list(
+    block_size = block_size,
+    combinations = unlist(result),
+    lambdas = unique(unlist(result))
+  ))
+}
+
+bib <- check.bib(data = taste, block = 'panelist', treatment = 'recipe')
+bib
+```
+
+b) Run both, the intra-block and inter-block analysis on it.  
+```{r}
+
+```
+
+
+
+
+__2. With the data set below, answer:.__  
+a) What design was used in the following experiment?  
+
+b) Run the appropriate analysis using both ANOVA and REML.  
+```{r}
+data(oats, package = "MASS")
+?oats
+```
+
+__3. Design an experiment and present both the design and the layout (field map) for the following experiments: __  
+a) To evaluate the effect of fertilization scheme and strawberry variety on fruit mass. Assume you have a 32 EU's available. The experiment consists of 8 different plots of land,  2 fertilization schemes, and 4 varieties.  
+
+b) An experiment to evaluate wine flavor. There are 42 brands of wine and 14 panelists.
