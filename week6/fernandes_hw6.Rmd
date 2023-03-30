@@ -55,16 +55,16 @@ check.bib <- function(data, block, treatment) {
 
   # for each combination, find frequency
   result <- list()
-  combs <- combn(treat_lvls, m = 2)
+  combs_names <- combn(colnames(freq_table), m = 2)
   for (i in 1:ncombs) {
     sub_freq_table <- freq_table[, combs_idxs[, i]]
-    result[paste(combs[, i], collapse = '-')] <- sum(rowSums(sub_freq_table) == 2)
+    result[paste(combs_names[, i], collapse = '-')] <- sum(rowSums(sub_freq_table) == 2)
   }
   
   treat_freq <- table(data[, treatment])
   combs_freq <- unlist(result[sort(names(result))])
-  lambdas <- unique(unlist(result))
-  is_bib <- (length(unique(treat_freq)) == 1) & (length(unique(combs_freq)) == 1)
+  lambdas <- sort(unique(unlist(result)), decreasing = T)
+  is_bib <- length(lambdas) == 1
   
   return(list(
     treatment_freq = treat_freq,
@@ -150,12 +150,43 @@ data(oats, package = "MASS")
 str(oats)
 ```
 
-a) What design was used in the following experiment?      
+a) What design was used in the following experiment?       
 It's a split-plot design.   
+The varieties were applied to the **main** plots, whereas manurial treatments were applied in the **sub-plots**.   
 
-b) Run the appropriate analysis using both ANOVA and REML.  
+This same experiment is available in the `agridat` package, but without rows and columns information. For the sake of plotting for better visualize the experiment, let's check it:   
+```{r}
+library(agridat)
+library(desplot)
+desplot(yates.oats, block ~ col+row,
+        col=nitro, text=gen, cex=1, aspect=511/176,
+        out1=block, out2=gen, 
+        out2.gpar=list(col = "gray50", lwd = 1, lty = 1))
+```
+
+The main plot is the variety (or genotype), and within this main plot we have sub-plots comprising all the 4 possible levels of
+manurial treatment level. The blocks form 3 main plots.   
+
+b) Run the appropriate analysis using both ANOVA and REML.    
+
+```{r}
+with(oats, interaction.plot(x.factor = V, 
+                            trace.factor = N, 
+                            response = Y))
+```
+
+Seems we don't have interaction between varieties and nitrogen doses because the lines are quite parallel.    
+
+Let's do ANOVA.   
+We have to add a error strata because in split-plot designs we have two error terms: one for the main-plot and another for the sub-plots.    
+When using block as random, the whole-plot error is `B + B:V` (not the Residual term as usual).       
+```{r}
+oats.random.block <- aov(Y ~ N * V + Error(B/V), data = oats)  # or Error(B + B:V)
+oats.random.block
+```
+
 
 __3. Design an experiment and present both the design and the layout (field map) for the following experiments: __  
-a) To evaluate the effect of fertilization scheme and strawberry variety on fruit mass. Assume you have a 32 EU's available. The experiment consists of 8 different plots of land,  2 fertilization schemes, and 4 varieties.  
+a) To evaluate the effect of fertilization scheme and strawberry variety on fruit mass. Assume you have a 32 EU's available. The experiment consists of 8 different plots of land, 2 fertilization schemes, and 4 varieties.   
 
 b) An experiment to evaluate wine flavor. There are 42 brands of wine and 14 panelists.
