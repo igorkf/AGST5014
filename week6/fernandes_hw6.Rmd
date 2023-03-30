@@ -7,7 +7,7 @@ output: pdf_document
 
 
 __1. With the data set below, answer:__ 
-(another resource on IBD: Chapter 14 - http://users.stat.umn.edu/~gary/book/fcdae.pdf )
+(another resource on IBD: Chapter 14 - http://users.stat.umn.edu/~gary/book/fcdae.pdf)
 a) Is this a balanced or partially balanced design?  
 ```{r}
 data("taste", package = "daewr")
@@ -34,17 +34,13 @@ with(taste, table(panelist, recipe))
 Some panelists didn't prove all the 4 recipes, so this is a **incomplete block design**.        
 Now we have to check whether is balanced or partially balanced.   
 
-We already know each recipe occurred 6 times, but how many times each treatment set within block occurred?   
-If we check all possible two-by-two combinations (AB, AC, AD, BC, BD, CD) within blocks, all of them occurred two times. This means we have a Balanced Incomplete Block (BIB) design.    
+We already know each recipe occurred 6 times, but how many times each treatment pair within blocks occurred?   
+If we check all possible pair combination (AB, AC, AD, BC, BD, CD) within blocks, all of them occurred two times, $\lambda = 2$. This means we have a Balanced Incomplete Block (BIB) design.    
 
-```{r, echo = F}
-
-# taste2 <- taste
-# taste2[1, 'recipe'] <- 'B' 
-
+```{r, echo = F, eval = F}
 check.bib <- function(data, block, treatment) {
   
-  block_size <- unique(table(data[, block]))
+  # block_size <- unique(table(data[, block]))
   
   # do we have equal block sizes?
   # if (length(block_size) != 1) {
@@ -53,44 +49,111 @@ check.bib <- function(data, block, treatment) {
 
   # pick all "block_size" combinations indexes
   treat_lvls <- unique(data[, treatment])
-  combs_idxs <- combn(1:length(treat_lvls), m = block_size)
+  combs_idxs <- combn(1:length(treat_lvls), m = 2)
   ncombs <- dim(combs_idxs)[2]
   freq_table <- table(data[, block], data[, treatment])
 
   # for each combination, find frequency
   result <- list()
-  combs <- combn(treat_lvls, m = block_size)
+  combs <- combn(treat_lvls, m = 2)
   for (i in 1:ncombs) {
     sub_freq_table <- freq_table[, combs_idxs[, i]]
-    result[paste(combs[, i], collapse = '-')] <- sum(rowSums(sub_freq_table) == block_size)
+    result[paste(combs[, i], collapse = '-')] <- sum(rowSums(sub_freq_table) == 2)
   }
+  
+  treat_freq <- table(data[, treatment])
+  combs_freq <- unlist(result[sort(names(result))])
+  lambdas <- unique(unlist(result))
+  is_bib <- (length(unique(treat_freq)) == 1) & (length(unique(combs_freq)) == 1)
+  
   return(list(
-    block_size = block_size,
-    combinations = unlist(result),
-    lambdas = unique(unlist(result))
+    treatment_freq = treat_freq,
+    combs_freq = combs_freq,
+    lambdas = lambdas,
+    is_bib = is_bib
   ))
 }
 
+# taste2 <- taste
+# taste2[1, 'recipe'] <- 'B'
 bib <- check.bib(data = taste, block = 'panelist', treatment = 'recipe')
 bib
 ```
 
-b) Run both, the intra-block and inter-block analysis on it.  
-```{r}
+b) Run both, the intra-block and inter-block analysis on it.   
 
+For intra-block analysis, the block must be fixed.      
+As we have an incomplete block design, we should use Type III sum of squares (or using Type I but being sure the block term comes first)
+
+```{r}
+fit1 <- lm(score ~ panelist + recipe, data = taste, contrasts = list(recipe = contr.sum))
+car::Anova(fit1, type = 'III')
 ```
 
+The recipe is significant, using a significance level of $\alpha = 0.05$.   
+```{r, fig.asp = 1.1, fig.width = 5.3, fig.align = 'center'}
+par(mfrow = c(2, 2))
+plot(fit1, which = 5)
+plot(fit1, which = 1)
+plot(fit1, which = 2)
+plot(residuals(fit1) ~ rownames(taste), main = 'Residuals vs Exp. Unit', 
+     font.main = 1, data = taste, xlab = 'Experimental unit', ylab = 'Residuals')
+abline(h = 0, col = 'red')
+```
 
+Seems we have homogeneity of variance across levels and also constant variability in residuals vs fitted plot.   
+The residuals are normally distributed. The residuals vs exp. unit plot seems to have an horizontal pattern too.   
 
+```{r}
+emmeans::emmeans(fit1, pairwise ~ recipe, adjust = 'Tukey')
+```
+
+The C recipe has slighly higher score than D ($\text{p-value} < 0.05$), but all the other pairwise
+comparions aren't significant.   
+
+For the inter-block analysis, the block should be random.   
+```{r}
+library(nlme)
+fit2 <- lme(
+  score ~ recipe, 
+  random = ~ 1 | panelist,
+  data = taste
+)
+anova(fit2)
+```
+Again, now using a mixed model, the recipe is significant using a significance level of $\alpha = 0.05$.  
+
+```{r, fig.asp = 1.1, fig.width = 5.3, fig.align = 'center'}
+par(mfrow = c(2, 2))
+plot(resid(fit2) ~ fitted(fit2))
+qqnorm(fit2$residuals)
+qqline(fit2$residuals)
+plot(residuals(fit2) ~ rownames(taste), main = 'Residuals vs Exp. Unit', 
+     font.main = 1, data = taste, xlab = 'Experimental unit', ylab = 'Residuals')
+```
+
+Seems the residuals are still good and the model adequate, although the QQ-normal plot
+was better in the fixed model.   
+
+```{r}
+emmeans::emmeans(fit2, pairwise ~ recipe, adjust = 'Tukey')
+```
+
+The expected marginal means are somewhat different from the fixed block model. For the C recipe, in this mixed model the EMM is 7.17, whereas for the fixed model it was 6.83.   
+
+For this mixed model, the recipe C is still significantly higher than D, but now the difference is 2.5, whereas in the fixed model it was 2.0. Now, the recipe C is also significantly higher than A, using significance level of $\alpha = 0.05$.   
 
 __2. With the data set below, answer:.__  
-a) What design was used in the following experiment?  
-
-b) Run the appropriate analysis using both ANOVA and REML.  
 ```{r}
 data(oats, package = "MASS")
 ?oats
+str(oats)
 ```
+
+a) What design was used in the following experiment?      
+It's a split-plot design.   
+
+b) Run the appropriate analysis using both ANOVA and REML.  
 
 __3. Design an experiment and present both the design and the layout (field map) for the following experiments: __  
 a) To evaluate the effect of fertilization scheme and strawberry variety on fruit mass. Assume you have a 32 EU's available. The experiment consists of 8 different plots of land,  2 fertilization schemes, and 4 varieties.  
