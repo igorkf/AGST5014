@@ -82,9 +82,8 @@ bib
 
 b) Run both, the intra-block and inter-block analysis on it.   
 
-For intra-block analysis, the block must be fixed.      
-As we have an incomplete block design, we should use Type III sum of squares (or using Type I but being sure the block term comes first)
-
+For intra-block analysis, we account for the block first and treat it a fixed.         
+As we have an incomplete block design, we should use Type III sum of squares.   
 ```{r}
 fit1 <- lm(score ~ panelist + recipe, data = taste, contrasts = list(recipe = contr.sum))
 car::Anova(fit1, type = 'III')
@@ -108,10 +107,10 @@ The residuals are normally distributed. The residuals vs exp. unit plot seems to
 emmeans::emmeans(fit1, pairwise ~ recipe, adjust = 'Tukey')
 ```
 
-The C recipe has slighly higher score than D ($\text{p-value} < 0.05$), but all the other pairwise
-comparions aren't significant.   
+The C recipe has slightly higher score than D ($\text{p-value} < 0.05$), but all the other pairwise
+comparisons aren't significant.   
 
-For the inter-block analysis, the block should be random.   
+For the inter-block analysis, we can just treat block as random.   
 ```{r}
 library(nlme)
 fit2 <- lme(
@@ -126,13 +125,15 @@ Again, now using a mixed model, the recipe is significant using a significance l
 ```{r, fig.asp = 1.1, fig.width = 5.3, fig.align = 'center'}
 par(mfrow = c(2, 2))
 plot(resid(fit2) ~ fitted(fit2))
+abline(h = 0, lty = 2)
 qqnorm(fit2$residuals)
-qqline(fit2$residuals)
+qqline(fit2$residuals, lty = 2)
 plot(residuals(fit2) ~ rownames(taste), main = 'Residuals vs Exp. Unit', 
      font.main = 1, data = taste, xlab = 'Experimental unit', ylab = 'Residuals')
+abline(h = 0, lty = 2)
 ```
 
-Seems the residuals are still good and the model adequate, although the QQ-normal plot
+Seems the residuals are still good and the model is adequate, although the QQ-normal plot
 was better in the fixed model.   
 
 ```{r}
@@ -141,7 +142,7 @@ emmeans::emmeans(fit2, pairwise ~ recipe, adjust = 'Tukey')
 
 The expected marginal means are somewhat different from the fixed block model. For the C recipe, in this mixed model the EMM is 7.17, whereas for the fixed model it was 6.83.   
 
-For this mixed model, the recipe C is still significantly higher than D, but now the difference is 2.5, whereas in the fixed model it was 2.0. Now, the recipe C is also significantly higher than A, using significance level of $\alpha = 0.05$.   
+For this mixed model, the recipe C is still significantly higher than D, but now the difference is 2.5, whereas in the fixed model it was 2.0. Now, the recipe C is also significantly higher than A, using a significance level of $\alpha = 0.05$.   
 
 __2. With the data set below, answer:.__  
 ```{r}
@@ -175,16 +176,30 @@ with(oats, interaction.plot(x.factor = V,
                             response = Y))
 ```
 
-Seems we don't have interaction between varieties and nitrogen doses because the lines are quite parallel.    
+Seems we don't have interaction between varieties and nitrogen doses because the lines are quite parallel.      
 
 Let's do ANOVA.   
 We have to add a error strata because in split-plot designs we have two error terms: one for the main-plot and another for the sub-plots.    
 When using block as random, the whole-plot error is `B + B:V` (not the Residual term as usual).       
 ```{r}
-oats.random.block <- aov(Y ~ N * V + Error(B/V), data = oats)  # or Error(B + B:V)
-oats.random.block
+oats_aov_rdm_block <- aov(Y ~ N * V + Error(B/V), data = oats)  # or Error(B + B:V)
+summary(oats_aov_rdm_block)
 ```
 
+The nitrogen dose (allocated in the sub-plot) effect is significant using a significance level of $\alpha = 0.05$, but the variety (allocated in the main plot) effect is not, nor the interaction "nitrogen:variety", which agrees with the interaction plot.      
+
+We could approach the problem using a mixed model using REML method.   
+```{r}
+oats_rmle <- lme(
+  fixed = Y ~ N * V,
+  random = ~ 1 | B/V,
+  method = 'REML',
+  data = oats
+)
+anova(oats_rmle)
+```
+
+We got the same results as the previous ANOVA model, where the nitrogen dose effect is significance, but variety is not, nor the interaction "nitrogen:variety".   
 
 __3. Design an experiment and present both the design and the layout (field map) for the following experiments: __  
 a) To evaluate the effect of fertilization scheme and strawberry variety on fruit mass. Assume you have a 32 EU's available. The experiment consists of 8 different plots of land, 2 fertilization schemes, and 4 varieties.   
