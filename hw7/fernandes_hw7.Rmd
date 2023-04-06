@@ -1,0 +1,53 @@
+---
+title: "Homework 7 - AGST 5014"
+author: "Igor Kuivjogi Fernandes and Ashmita Upadhyay"
+date: "`r Sys.Date()`"
+output: pdf_document
+---
+
+
+__1. A soil scientist conducted an experiment to evaluate the effects of soil 
+compaction and soil moisture on the activity of soil microbes. Reduced levels of
+microbe activity will occur in poorly aerated soils. The aeration levels can be 
+restricted in highly saturated or compacted soils. Treated soil samples were placed
+in airtight containers and incubated under conditions conducive to microbial activity.
+The microbe activity in each soil sample was measured as the percent increase in
+CO2 produced above atmospheric levels. The treatment design was a 3x3 factorial
+with three levels of soil compaction (bulk density = mg soil/m? and three levels
+of soil moisture (kg water/kg soil). There were two replicate soil container units
+prepared for each treatment. The CO2 evolution/kg soil/day was recorded on three
+successive days. The data for each soil container unit are shown below:__  
+
+a) Describe this experiment (treatment and experimental design) and write the 
+statistical model.  
+b) Conduct the proper statistical analysis. Are the assumptions for this type of 
+analysis met?  
+```{r}
+q1 <- read.csv("HW7_Q1.csv")
+
+```
+
+
+__2. An agronomist conducted a yield trial with five alfalfa cultivars in a randomized
+complete block design with three replications. Each plot was harvested four times
+in each of two years. The plot yield (lb/plot) from two harvests from each plot in each of tow years are shown in the table below. Compare the yield of the cultivars (notice that you need adjusted means for that).  
+
+```{r}
+q2 <- read.csv("HW7_Q2.csv")
+```
+
+
+__3. One experiment was set up to assess possible phytotoxicity effects relating
+to an excessive persistence of herbicide residues in soil. The three crops
+were sown 40 days after a herbicide treatment (a check was included as the second
+herbicide treatment). __
+a) Describe this experiment and write the statistical model.
+
+b) Run the proper analyze on experiment and proceed with 
+interpretations. 
+
+```{r}
+q3 <- read.csv("HW7_Q3.csv")
+```
+
+
