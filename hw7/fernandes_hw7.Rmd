@@ -18,29 +18,53 @@ of soil moisture (kg water/kg soil). There were two replicate soil container uni
 prepared for each treatment. The CO2 evolution/kg soil/day was recorded on three
 successive days. The data for each soil container unit are shown below:__  
 
+```{r, warning = F, message = F}
+library(tidyverse)
+q1 <- read.csv("HW7_Q1.csv")
+q1 <- transform(
+  q1, 
+  Density = factor(Density), 
+  Moisture = factor(Moisture),
+  Unit = factor(Unit)
+)
+str(q1)
+```
+
+Let's do some plots for checking the trend of response.   
+```{r, fig.asp = 1.3}
+# wide to long format
+q1_long <- q1 %>% 
+  pivot_longer(-c(Density, Moisture, Unit), names_to = 'Day', values_to = 'Y') %>% 
+  mutate(Day = factor(str_sub(Day, 4)))
+
+par(mfrow = c(2, 1))
+with(q1_long, interaction.plot(Day, Density, Y))
+with(q1_long, interaction.plot(Day, Moisture, Y))
+```
+
 a) Describe this experiment (treatment and experimental design) and write the 
 statistical model.  
+
 b) Conduct the proper statistical analysis. Are the assumptions for this type of 
 analysis met?  
-```{r}
-q1 <- read.csv("HW7_Q1.csv")
-
-```
 
 
 __2. An agronomist conducted a yield trial with five alfalfa cultivars in a randomized
 complete block design with three replications. Each plot was harvested four times
-in each of two years. The plot yield (lb/plot) from two harvests from each plot in each of tow years are shown in the table below. Compare the yield of the cultivars (notice that you need adjusted means for that).  
+in each of two years. The plot yield (lb/plot) from two harvests from each plot in each of tow years are shown in the table below. Compare the yield of the cultivars (notice that you need adjusted means for that).__    
 
 ```{r}
 q2 <- read.csv("HW7_Q2.csv")
+q2 <- transform(q2, Cultivar = factor(Cultivar), Block = factor(Block))
+q2
 ```
 
 
 __3. One experiment was set up to assess possible phytotoxicity effects relating
 to an excessive persistence of herbicide residues in soil. The three crops
 were sown 40 days after a herbicide treatment (a check was included as the second
-herbicide treatment). __
+herbicide treatment).__    
+
 a) Describe this experiment and write the statistical model.
 
 b) Run the proper analyze on experiment and proceed with 
