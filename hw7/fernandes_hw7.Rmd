@@ -12,19 +12,15 @@ restricted in highly saturated or compacted soils. Treated soil samples were pla
 in airtight containers and incubated under conditions conducive to microbial activity.
 The microbe activity in each soil sample was measured as the percent increase in
 CO2 produced above atmospheric levels. The treatment design was a 3x3 factorial
-with three levels of soil compaction (bulk density = mg soil/m$^3$ and three levels
+with three levels of soil compaction (bulk density = mg soil/m$^3$) and three levels
 of soil moisture (kg water/kg soil). There were two replicate soil container units
 prepared for each treatment. The CO2 evolution/kg soil/day was recorded on three
 successive days. The data for each soil container unit are shown below:__    
 
-```{r, warning = F, message = F}
-library(tidyverse)
+```{r}
 q1 <- read.csv('HW7_Q1.csv')
 q1 <- transform(
-  q1,
-  Density = factor(Density), 
-  Moisture = factor(Moisture),
-  Unit = factor(Unit)
+  q1, Density = factor(Density), Moisture = factor(Moisture), Unit = factor(Unit)
 )
 str(q1)
 ```
@@ -34,7 +30,7 @@ statistical model.
 
 This is a Repeated Measures design, because the data for each soil container was collected on three successive days.   
 We have two treatments:   
-- soil compaction (here called `Density`) with three levels (1.1, 1.4, 1.6)   
+- soil compaction (density) with three levels (1.1, 1.4, 1.6)    
 - soil moisture with three levels (0.1, 0.2, 0.24)   
 
 ```{r, echo = F, eval = F}
@@ -48,24 +44,26 @@ $$
 y = \mu + \alpha + \beta + \tau + \alpha \tau + \beta \tau + \alpha \beta + \alpha \beta \tau + \varepsilon,
 $$
 
-where $y$ is the response, $\alpha$ is the density treatment, $\beta$ is the moisture treatment, $\tau$ is the day (time) of measurement, $\alpha \tau$ is the density interacting with time, $\beta \tau$ is the moisture interacting with time, $\alpha \beta$ in the interaction between density and moisture, $\alpha \beta \tau$ is the interaction between density, moisture and time, and $\varepsilon$ is the experimental error.    
+where $y$ is the response, $\alpha$ is the density treatment, $\beta$ is the moisture treatment, $\tau$ is the day (time) of measurement, $\alpha \tau$ is the density interacting with time, $\beta \tau$ is the moisture interacting with time, $\alpha \beta$ in the interaction between density and moisture, $\alpha \beta \tau$ is the interaction between density, moisture and time, and $\varepsilon$ is the error term.    
 
-b) Conduct the proper statistical analysis. Are the assumptions for this type of analysis met?    
-Firstly, we can try a multivariate model and check assumptions for sphericity.      
+
+b) Conduct the proper statistical analysis. Are the assumptions for this type of analysis met?   
+
+Firstly, we can try a multivariate model and check the assumption of sphericity.      
 ```{r}
 mod_multi <- lm(cbind(day1, day2, day3) ~ Density * Moisture, data = q1)
 mod <- car::Anova(mod_multi, idata = data.frame(day = factor(1:3)), idesign = ~day)
 summary(mod, multivariate = F)$sphericity.tests
 ```
 
-For Mauchly Tests for Sphericity, we reject the null hypothesis that the covariance matrix of the repeated measures obeys the Huynh-Feldt condition. In this case, better stick with mixed models and try account a good variance-covariance structure.   
+For Mauchly Tests for Sphericity, we reject the null hypothesis that the covariance matrix of the repeated measures obeys the Huynh-Feldt condition. In this case, we cannot use the split-plot framework and it's better to stick with a model that is able to account for variance-covariance structures.      
 
 Let's do some plots for checking the trend of response.
 ```{r, fig.asp = 1.3}
 # wide to long format
-q1_long <- q1 %>%
-  pivot_longer(-c(Density, Moisture, Unit), names_to = 'Day', values_to = 'Y') %>%
-  mutate(Day = factor(str_sub(Day, 4)))
+q1_long <- q1 |>
+  tidyr::pivot_longer(-c(Density, Moisture, Unit), names_to = 'Day', values_to = 'Y') |>
+  dplyr::mutate(Day = factor(stringr::str_sub(Day, 4)))
 
 par(mfrow = c(2, 1))
 with(q1_long, interaction.plot(Day, Density, Y))
@@ -74,21 +72,82 @@ with(q1_long, interaction.plot(Day, Moisture, Y))
 
 Seems the trend in response for density is quite the same for every density level, whereas for moisture the trends are different.    
 
-Let's fit mixed models with different variance-covariance structures.   
+Let's fit linear models with different variance-covariance structures.   
 ```{r, message = F}
 library(nlme)
 
+# identity
+mod_id <- gls(
+  Y ~ Density * Moisture * Day, 
+  data = q1_long, 
+)
+
+# compound symmetry
+mod_cs <- gls(
+  Y ~ Density * Moisture * Day, 
+  corr = corCompSymm(, form = ~ 1 | Unit),  
+  data = q1_long, 
+)
+
+# 1st order auto regressive
+mod_ar1 <- gls(
+  Y ~ Density * Moisture * Day, 
+  corr = corAR1(, form = ~ 1 | Unit),  
+  data = q1_long, 
+)
+
+# unstructured
+mod_us <- gls(
+  Y ~ Density * Moisture * Day, 
+  corr = corSymm(, form = ~ 1 | Unit),  
+  data = q1_long, 
+)
+
+# comparing models
+anova(mod_id, mod_cs, mod_ar1, mod_us)
 ```
+
+The AIC and log likelihood tell us the unstructured model (model 4) is the best, whereas from the AIC the 1st auto regressive model (model 3) is the best. The p-value for testing model 3 vs 4 shows us that we do not reject the hypothesis (using a significance level of $\alpha = 0.05$) that the model 4 (unstructured) is better than the model 3 (1st order auto regressive), so we stick with the 3th model.  
+
+
+```{r}
+anova(mod_ar1)
+```
+
+Both `Density` and `Moisture` treatments are significant, as well the interaction `Moisture:Day`. The interactions `Density:Moisture`, `Density:Day` and `Density:Moisture:Day` are not significant, all using a significance level of $\alpha = 0.05$.     
 
 
 __2. An agronomist conducted a yield trial with five alfalfa cultivars in a randomized
 complete block design with three replications. Each plot was harvested four times
-in each of two years. The plot yield (lb/plot) from two harvests from each plot in each of tow years are shown in the table below. Compare the yield of the cultivars (notice that you need adjusted means for that).__    
+in each of two years. The plot yield (lb/plot) from two harvests from each plot in each of two years are shown in the table below. Compare the yield of the cultivars (notice that you need adjusted means for that).__    
 
 ```{r}
-q2 <- read.csv("HW7_Q2.csv")
+q2 <- read.csv('HW7_Q2.csv')
 q2 <- transform(q2, Cultivar = factor(Cultivar), Block = factor(Block))
-q2
+str(q2)
+```
+
+```{r}
+# pivot to long with 4 measurements
+q2_long <- q2 |>
+  tidyr::pivot_longer(-c(Cultivar, Block), names_to = 'Date', values_to = 'Y')
+  
+# pivot to long with 2 measurements
+# q2_long <- q2 %>% 
+#   tidyr::pivot_longer(-c(Cultivar, Block), names_to = 'Date', values_to = 'Y') %>% 
+#   dplyr::mutate(Year = factor(ifelse(Date %in% c('Apr.86', 'May.86'), 86, 87))) %>% 
+#   dplyr::mutate(Month = stringr::str_sub(Date, end = 3)) %>% 
+#   dplyr::select(-Date) %>% 
+#   tidyr::pivot_wider(id_cols = c(Cultivar, Block, Year), names_from = 'Month', values_from = 'Y') %>% 
+#   dplyr::arrange(Year, Cultivar, Block)
+```
+
+
+We could try include the year as a factor and assume there are only 2 measurements in time, but we can also analyse it with 4 measurements. We stick with the latter.    
+The 4 measurements are not evenly spaced.   
+Let's fit some linear models with variance-covariance structures.   
+```{r}
+
 ```
 
 
