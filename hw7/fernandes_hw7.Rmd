@@ -85,37 +85,55 @@ mod_id <- gls(
 # compound symmetry
 mod_cs <- gls(
   Y ~ Density * Moisture * Day, 
-  corr = corCompSymm(, form = ~ 1 | Unit),  
+  corr = corCompSymm(form = ~ 1 | Unit),  
+  data = q1_long, 
+)
+
+# diagonal
+mod_diag <- gls(
+  Y ~ Density * Moisture * Day, 
+  weights = varIdent(form = ~ 1 | Day),
   data = q1_long, 
 )
 
 # 1st order auto regressive
 mod_ar1 <- gls(
   Y ~ Density * Moisture * Day, 
-  corr = corAR1(, form = ~ 1 | Unit),  
+  corr = corAR1(form = ~ 1 | Unit),  
   data = q1_long, 
 )
 
 # unstructured
 mod_us <- gls(
   Y ~ Density * Moisture * Day, 
-  corr = corSymm(, form = ~ 1 | Unit),  
+  corr = corSymm(form = ~ 1 | Unit),  
+  weights = varIdent(form = ~ 1 | Day),
   data = q1_long, 
 )
 
 # comparing models
-anova(mod_id, mod_cs, mod_ar1, mod_us)
+anova(mod_id, mod_cs, mod_diag, mod_ar1, mod_us)
 ```
 
-The AIC and log likelihood tell us the unstructured model (model 4) is the best, whereas from the AIC the 1st auto regressive model (model 3) is the best. The p-value for testing model 3 vs 4 shows us that we do not reject the hypothesis (using a significance level of $\alpha = 0.05$) that the model 4 (unstructured) is better than the model 3 (1st order auto regressive), so we stick with the 3th model.  
+The AIC and BIC tell us that the model 4 (1st order auto regressive) is the best model. The LR tests also shows us that the model 4 is better than
+model 3 (test 3 vs 4, p-value = $0.0001$) and model 5 (4 vs 5, p-value = $0.2054$). Hence, we chose model 4.
+Let's check some assumptions:   
+```{r}
+plot(mod_ar1$fitted, mod_ar1$residuals)
+```
+Seems we have homogeneous variance while increasing the fitted values, which is good.   
 
+```{r}
+shapiro.test(mod_ar1$residuals)
+```
+
+We also don't reject the hypothesis that the residuals are normally distributed, using a significance level of $\alpha = 0.05$.   
 
 ```{r}
 anova(mod_ar1)
 ```
 
 Both `Density` and `Moisture` treatments are significant, as well the interaction `Moisture:Day`. The interactions `Density:Moisture`, `Density:Day` and `Density:Moisture:Day` are not significant, all using a significance level of $\alpha = 0.05$.     
-
 
 __2. An agronomist conducted a yield trial with five alfalfa cultivars in a randomized
 complete block design with three replications. Each plot was harvested four times
@@ -127,27 +145,91 @@ q2 <- transform(q2, Cultivar = factor(Cultivar), Block = factor(Block))
 str(q2)
 ```
 
+
 ```{r}
 # pivot to long with 4 measurements
-q2_long <- q2 |>
-  tidyr::pivot_longer(-c(Cultivar, Block), names_to = 'Date', values_to = 'Y')
+# q2_long <- q2 |>
+#   tidyr::pivot_longer(-c(Cultivar, Block), names_to = 'Date', values_to = 'Y') |>
+#   dplyr::mutate(Date = factor(Date))
   
 # pivot to long with 2 measurements
-# q2_long <- q2 %>% 
-#   tidyr::pivot_longer(-c(Cultivar, Block), names_to = 'Date', values_to = 'Y') %>% 
-#   dplyr::mutate(Year = factor(ifelse(Date %in% c('Apr.86', 'May.86'), 86, 87))) %>% 
-#   dplyr::mutate(Month = stringr::str_sub(Date, end = 3)) %>% 
-#   dplyr::select(-Date) %>% 
-#   tidyr::pivot_wider(id_cols = c(Cultivar, Block, Year), names_from = 'Month', values_from = 'Y') %>% 
-#   dplyr::arrange(Year, Cultivar, Block)
+q2_long <- q2 |>
+  tidyr::pivot_longer(-c(Cultivar, Block), names_to = 'Date', values_to = 'Y') |>
+  dplyr::mutate(Year = factor(ifelse(Date %in% c('Apr.86', 'May.86'), 86, 87))) |>
+  dplyr::mutate(Month = stringr::str_sub(Date, end = 3)) |>
+  dplyr::select(-Date) |>
+  tidyr::pivot_wider(id_cols = c(Cultivar, Block, Year), names_from = 'Month', values_from = 'Y') |>
+  dplyr::arrange(Year, Cultivar, Block) |>
+  tidyr::pivot_longer(c(Apr, May), names_to = 'Month', values_to = 'Y') |>
+  dplyr::mutate(number = 1) |>
+  dplyr::group_by(Cultivar, Block, Year) |>
+  dplyr::mutate(Unit = cumsum(number))
+
+q2_long
+```
+
+We could try include the year as a factor and assume there are only 2 measurements in time, but we can also analyse it with 4 measurements, although they are not evenly spaced. We stick with the latter.      
+
+<!-- ```{r, message = F} -->
+<!-- # identity -->
+<!-- mod_id <- gls( -->
+<!--   Y ~ Cultivar * Date,  -->
+<!--   data = q2_long,  -->
+<!-- ) -->
+
+<!-- # compound symmetry -->
+<!-- mod_cs <- update(mod_id, corr = corCompSymm(form = ~ 1 | Block)) -->
+
+<!-- # diagonal -->
+<!-- mod_diag <- update(mod_id, weights = varIdent(form = ~ 1 | Date)) -->
+
+<!-- # 1st order auto regressive -->
+<!-- mod_ar1 <- update(mod_id, corr = corAR1(form = ~ 1 | Block)) -->
+
+<!-- # unstructured -->
+<!-- # not converging -->
+<!-- # mod_us <- update(mod_id, corr = corSymm(form = ~ 1 | Block), weights = varIdent(form = ~ 1 | Date)) -->
+
+<!-- # comparing models -->
+<!-- anova(mod_id, mod_cs, mod_diag, mod_ar1) -->
+<!-- ``` -->
+
+<!-- It's clear that identity model was the best (lower AIC, lower BIC, and LR test was not significant, i.e. model 1 is better than model 2).    -->
+
+We can try to check sphericity and check whether a split-plot analysis would be adequate here.   
+```{r}
+mod_multi <- lm(cbind(Apr.86, May.86, Apr.87, May.87) ~ Cultivar, data = q2)
+mod <- car::Anova(mod_multi, idata = data.frame(Date = factor(1:4)), idesign = ~Date)
+summary(mod, multivariate = F)$sphericity.tests
+```
+
+We don't reject the null hypothesis that there is a departure from the Huynh-Feldt, using a significance level of $\alpha = 0.05$, which means we can use the split-plot analysis. In this case, the `Cultivar` is the whole-plot, and the `Date` is the sub-plot. We treat block as fixed.      
+```{r}
+mod_sp <- aov(Y ~ Cultivar * Date + Error(Block/Cultivar), data = q2_long)
+summary(mod_sp)
+# mm_sp <- lme(
+#   fixed = Y ~ Cultivar * Date,
+#   random = ~ 1 | Block/Cultivar,  # or Block + Block:Cultivar
+#   method = 'REML',
+#   data = q2_long
+# )
+# anova(mm_sp)
+```
+
+The error term `Block:Cultivar` error is being used to calculate the F-value of `Cultivar` (the whole-plot), which effect is not significant.      
+The usual residual term is being used to calculate the F-value of `Date`, which is significant, i.e. the yield changes over time.     
+
+Although the `Cultivar` is not significant, the change over time is significant, i.e. `Cultivar:Date`, who seems to make sense to compare this term to found which cultivar was better across the time.   
+```{r}
+emmeans::emmeans(mod_sp, pairwise ~ Cultivar, by = 'Date')$contrasts
 ```
 
 
-We could try include the year as a factor and assume there are only 2 measurements in time, but we can also analyse it with 4 measurements. We stick with the latter.    
-The 4 measurements are not evenly spaced.   
-Let's fit some linear models with variance-covariance structures.   
-```{r}
 
+The `Cultivar` is not significant, using a significance level of $\alpha = 0.05$. Hence, all the cultivars performed the same. 
+
+```{r}
+emmeans::
 ```
 
 
@@ -155,14 +237,16 @@ __3. One experiment was set up to assess possible phytotoxicity effects relating
 to an excessive persistence of herbicide residues in soil. The three crops
 were sown 40 days after a herbicide treatment (a check was included as the second
 herbicide treatment).__    
+```{r}
+q3 <- read.csv("HW7_Q3.csv")
+```
 
 a) Describe this experiment and write the statistical model.
+
+
 
 b) Run the proper analyze on experiment and proceed with 
 interpretations. 
 
-```{r}
-q3 <- read.csv("HW7_Q3.csv")
-```
 
 
