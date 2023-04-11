@@ -17,6 +17,13 @@ of soil moisture (kg water/kg soil). There were two replicate soil container uni
 prepared for each treatment. The CO2 evolution/kg soil/day was recorded on three
 successive days. The data for each soil container unit are shown below:__    
 
+
+```{r, warning = F, message = F}
+library(tidyverse)
+library(nlme)
+```
+
+
 ```{r}
 q1 <- read.csv('HW7_Q1.csv')
 q1 <- transform(
@@ -41,11 +48,10 @@ We have two treatments:
 
 Statistical model: 
 $$
-y = \mu + \alpha + \beta + \tau + \alpha \tau + \beta \tau + \alpha \beta + \alpha \beta \tau + \varepsilon,
+y_{ijk} = \mu + \alpha_i + \beta_j + \tau_k + \alpha \tau_{ik} + \beta \tau_{jk} + \alpha \beta_{ij} + \varepsilon_{ijk},
 $$
 
-where $y$ is the response, $\alpha$ is the density treatment, $\beta$ is the moisture treatment, $\tau$ is the day (time) of measurement, $\alpha \tau$ is the density interacting with time, $\beta \tau$ is the moisture interacting with time, $\alpha \beta$ in the interaction between density and moisture, $\alpha \beta \tau$ is the interaction between density, moisture and time, and $\varepsilon$ is the error term.    
-
+where $y_{ijk}$ is the response, $mu$ is the grand mean, $\alpha_i$ is the density treatment, with $i = {1, 2, 3}$, $\beta_j$ is the moisture treatment, with $j = 1, 2, 3, $$\tau_k$ is the day (time) of measurement, with $k = 1, 2, 3$, $\alpha \tau_{ik}$ is the density interacting with time, $\beta \tau_{jk}$ is the moisture interacting with time, $\alpha \beta_{ij}$ in the interaction between density and moisture, and $\varepsilon_{ijk}$ is the error term.    
 
 b) Conduct the proper statistical analysis. Are the assumptions for this type of analysis met?   
 
@@ -61,9 +67,9 @@ For Mauchly Tests for Sphericity, we reject the null hypothesis that the covaria
 Let's do some plots for checking the trend of response.
 ```{r, fig.asp = 1.3}
 # wide to long format
-q1_long <- q1 |>
-  tidyr::pivot_longer(-c(Density, Moisture, Unit), names_to = 'Day', values_to = 'Y') |>
-  dplyr::mutate(Day = factor(stringr::str_sub(Day, 4)))
+q1_long <- q1 %>% 
+  pivot_longer(-c(Density, Moisture, Unit), names_to = 'Day', values_to = 'Y') %>% 
+  mutate(Day = factor(stringr::str_sub(Day, 4)))
 
 par(mfrow = c(2, 1))
 with(q1_long, interaction.plot(Day, Density, Y))
@@ -74,8 +80,6 @@ Seems the trend in response for density is quite the same for every density leve
 
 Let's fit linear models with different variance-covariance structures.   
 ```{r, message = F}
-library(nlme)
-
 # identity
 mod_id <- gls(
   Y ~ Density * Moisture * Day, 
@@ -147,106 +151,136 @@ str(q2)
 
 
 ```{r}
-# pivot to long with 4 measurements
-# q2_long <- q2 |>
-#   tidyr::pivot_longer(-c(Cultivar, Block), names_to = 'Date', values_to = 'Y') |>
-#   dplyr::mutate(Date = factor(Date))
-  
 # pivot to long with 2 measurements
-q2_long <- q2 |>
-  tidyr::pivot_longer(-c(Cultivar, Block), names_to = 'Date', values_to = 'Y') |>
-  dplyr::mutate(Year = factor(ifelse(Date %in% c('Apr.86', 'May.86'), 86, 87))) |>
-  dplyr::mutate(Month = stringr::str_sub(Date, end = 3)) |>
-  dplyr::select(-Date) |>
-  tidyr::pivot_wider(id_cols = c(Cultivar, Block, Year), names_from = 'Month', values_from = 'Y') |>
-  dplyr::arrange(Year, Cultivar, Block) |>
-  tidyr::pivot_longer(c(Apr, May), names_to = 'Month', values_to = 'Y') |>
-  dplyr::mutate(number = 1) |>
-  dplyr::group_by(Cultivar, Block, Year) |>
-  dplyr::mutate(Unit = cumsum(number))
+q2_long <- q2 %>%
+  pivot_longer(Apr.86:May.87, names_to = 'harvesttime', values_to = 'Yield') %>%
+  separate_wider_delim(harvesttime, '.', names = c('Month', 'Year')) %>%
+  arrange(Year, Cultivar, Block) %>%
+  mutate(Unit = factor(rep(1:30, each = 2)), 
+         Cultivar = factor(Cultivar), 
+         Block = factor(Block), 
+         Month = factor(Month),
+         Year = factor(Year))
 
-q2_long
+str(q2_long)
 ```
 
-We could try include the year as a factor and assume there are only 2 measurements in time, but we can also analyse it with 4 measurements, although they are not evenly spaced. We stick with the latter.      
+We split the year as a factor and used only two measurements (April and May).    
+We can go on and fit variance-covariance models.  
 
-<!-- ```{r, message = F} -->
-<!-- # identity -->
-<!-- mod_id <- gls( -->
-<!--   Y ~ Cultivar * Date,  -->
-<!--   data = q2_long,  -->
-<!-- ) -->
+```{r, message = F}
+# identity
+mod_id <- gls(
+  Yield ~ Block + Cultivar * Month * Year,
+  data = q2_long,
+)
 
-<!-- # compound symmetry -->
-<!-- mod_cs <- update(mod_id, corr = corCompSymm(form = ~ 1 | Block)) -->
+# compound symmetry
+mod_cs <- gls(
+  Yield ~ Block + Cultivar * Month * Year,
+  corr = corCompSymm(form = ~ 1 | Unit),
+  data = q2_long,
+)
 
-<!-- # diagonal -->
-<!-- mod_diag <- update(mod_id, weights = varIdent(form = ~ 1 | Date)) -->
+# diagonal
+mod_diag <- gls(
+  Yield ~ Block + Cultivar * Month * Year,
+  weights = varIdent(form = ~ 1 | Month),
+  data = q2_long,
+)
 
-<!-- # 1st order auto regressive -->
-<!-- mod_ar1 <- update(mod_id, corr = corAR1(form = ~ 1 | Block)) -->
+# 1st order auto regressive
+mod_ar1 <- gls(
+  Yield ~ Block + Cultivar * Month * Year,
+  corr = corAR1(form = ~ 1 | Unit),
+  data = q2_long,
+)
 
-<!-- # unstructured -->
-<!-- # not converging -->
-<!-- # mod_us <- update(mod_id, corr = corSymm(form = ~ 1 | Block), weights = varIdent(form = ~ 1 | Date)) -->
+# unstructured
+mod_us <- gls(
+  Yield ~ Block + Cultivar * Month * Year,
+  corr = corSymm(form = ~ 1 | Unit),
+  weights = varIdent(form = ~ 1 | Month),
+  data = q2_long,
+)
 
-<!-- # comparing models -->
-<!-- anova(mod_id, mod_cs, mod_diag, mod_ar1) -->
-<!-- ``` -->
+# comparing models
+anova(mod_id, mod_cs, mod_diag, mod_ar1, mod_us)
+```
 
-<!-- It's clear that identity model was the best (lower AIC, lower BIC, and LR test was not significant, i.e. model 1 is better than model 2).    -->
+The simplest model (identity matrix) was the best.   
 
-We can try to check sphericity and check whether a split-plot analysis would be adequate here.   
+Checking assumptions:   
 ```{r}
-mod_multi <- lm(cbind(Apr.86, May.86, Apr.87, May.87) ~ Cultivar, data = q2)
-mod <- car::Anova(mod_multi, idata = data.frame(Date = factor(1:4)), idesign = ~Date)
-summary(mod, multivariate = F)$sphericity.tests
+plot(mod_id$fitted, mod_id$residuals)
 ```
 
-We don't reject the null hypothesis that there is a departure from the Huynh-Feldt, using a significance level of $\alpha = 0.05$, which means we can use the split-plot analysis. In this case, the `Cultivar` is the whole-plot, and the `Date` is the sub-plot. We treat block as fixed.      
-```{r}
-mod_sp <- aov(Y ~ Cultivar * Date + Error(Block/Cultivar), data = q2_long)
-summary(mod_sp)
-# mm_sp <- lme(
-#   fixed = Y ~ Cultivar * Date,
-#   random = ~ 1 | Block/Cultivar,  # or Block + Block:Cultivar
-#   method = 'REML',
-#   data = q2_long
-# )
-# anova(mm_sp)
-```
-
-The error term `Block:Cultivar` error is being used to calculate the F-value of `Cultivar` (the whole-plot), which effect is not significant.      
-The usual residual term is being used to calculate the F-value of `Date`, which is significant, i.e. the yield changes over time.     
-
-Although the `Cultivar` is not significant, the change over time is significant, i.e. `Cultivar:Date`, who seems to make sense to compare this term to found which cultivar was better across the time.   
-```{r}
-emmeans::emmeans(mod_sp, pairwise ~ Cultivar, by = 'Date')$contrasts
-```
-
-
-
-The `Cultivar` is not significant, using a significance level of $\alpha = 0.05$. Hence, all the cultivars performed the same. 
+Seems we have homogeneous variance across fitted values.   
 
 ```{r}
-emmeans::
+shapiro.test(mod_id$residuals)
 ```
 
+We don't reject the hypothesis that the residuals are normally distributed.
+
+Checking significance:   
+```{r}
+anova(mod_id)
+```
+The `Cultivar` is significant, using a significance level of $\alpha = 0.05$. Which one performs the best?   
+
+```{r}
+plot(emmeans::emmeans(mod_id, pairwise ~ Cultivar), comparisons = T, CI = F)
+```
+Both cultivars 1 and 4 were better than 2, but there's no consensus which cultivar is the best although cultivar 4 has the largest predicted mean (black dot).    
+Note: the results could be misleading because the interactions `Cultivar:Year` and `Cultivar:Month:Year` are significant.  
 
 __3. One experiment was set up to assess possible phytotoxicity effects relating
 to an excessive persistence of herbicide residues in soil. The three crops
 were sown 40 days after a herbicide treatment (a check was included as the second
 herbicide treatment).__    
 ```{r}
-q3 <- read.csv("HW7_Q3.csv")
+q3 <- read.csv('HW7_Q3.csv')
+q3 <- transform(q3,
+  Herbicide = as.factor(Herbicide),
+  Crop = as.factor(Crop),
+  row = as.factor(row),
+  col = as.factor(col),
+  Block = as.factor(Block)
+)
+str(q3)
 ```
 
 a) Describe this experiment and write the statistical model.
 
+Let's check the field plot:
+```{r, warning = F}
+desplot::desplot(
+  q3,
+  Block ~ row + col, 
+  col = Crop,
+  cex = 1.5,
+  out1 = Herbicide, 
+  out2 = Crop,
+  out2.gpar = list(col = 'gray50', lwd = 1, lty = 1),
+)
+```
 
+This is a strip plot design where two levels of herbicide were applied horizontally and after that the three crops were randomized vertically within blocks. Both treatments (herbicide and crop) are the whole-plots, whereas the interaction between herbicide and crop is the sub-plot, which means we have three error terms.      
 
-b) Run the proper analyze on experiment and proceed with 
-interpretations. 
+Statistical model:   
+$$
+y_{ijk} = \mu + b_i + \alpha_j + \beta_k + b \alpha_{ij} + b \beta_{ik} + \alpha \beta_{jk} + \varepsilon_{ijk},
+$$
 
+where $y_{ijk}$ is the crop biomass, $\mu$ is the grand mean, $b_i$ is the random block, with $i = 1, 2, 3, 4$, $\alpha_j$ is the herbicide treatment (main-plot), which $j = 1, 2$, $\beta_k$ is crop treatment (main-plot), with $k = 1, 2, 3$, $\alpha \beta_{jk}$ is the interaction between herbicide and crop (sub-plot), the block interactions with each treatment are the error terms, and $\varepsilon$ is the sub-plot error term.   
 
+b) Run the proper analyze on experiment and proceed with interpretations. 
+
+```{r}
+mod_strip <- aov(CropBiomass ~ Herbicide * Crop + Error(Block/(Herbicide * Crop)), data = q3)
+summary(mod_strip)
+```
+
+Using a significance level of $\alpha = 0.05$, we can see that the `Crop` is significant, but `Herbicide` and the interaction between `Herbicide` and `Crop` are not.    
 
