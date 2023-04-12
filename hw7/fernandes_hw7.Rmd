@@ -80,12 +80,6 @@ Seems the trend in response for density is quite the same for every density leve
 
 Let's fit linear models with different variance-covariance structures.   
 ```{r, message = F}
-# identity
-mod_id <- gls(
-  Y ~ Density * Moisture * Day, 
-  data = q1_long, 
-)
-
 # compound symmetry
 mod_cs <- gls(
   Y ~ Density * Moisture * Day, 
@@ -116,22 +110,24 @@ mod_us <- gls(
 )
 
 # comparing models
-anova(mod_id, mod_cs, mod_diag, mod_ar1, mod_us)
+anova(mod_cs, mod_diag, mod_ar1, mod_us)
 ```
 
-The AIC and BIC tell us that the model 4 (1st order auto regressive) is the best model. The LR tests also shows us that the model 4 is better than
-model 3 (test 3 vs 4, p-value = $0.0001$) and model 5 (4 vs 5, p-value = $0.2054$). Hence, we chose model 4.
+The AIC and BIC tell us that the model 3 (1st order auto regressive) is the best model. The LR tests also shows us that the model 3 is better than
+model 2 and 4. Hence, we chose model 3.   
+
 Let's check some assumptions:   
 ```{r}
-plot(mod_ar1$fitted, mod_ar1$residuals)
+plot(mod_ar1)
 ```
-Seems we have homogeneous variance while increasing the fitted values, which is good.   
+
+Seems we have homogeneous variance across fitted values.   
 
 ```{r}
-shapiro.test(mod_ar1$residuals)
+shapiro.test(residuals(mod_ar1, type = 'pearson'))
 ```
 
-We also don't reject the hypothesis that the residuals are normally distributed, using a significance level of $\alpha = 0.05$.   
+We also don't reject the hypothesis that the residuals are normally distributed, using a significance level of $\alpha = 0.05$.    
 
 ```{r}
 anova(mod_ar1)
@@ -166,74 +162,58 @@ str(q2_long)
 ```
 
 We split the year as a factor and used only two measurements (April and May).    
-We can go on and fit variance-covariance models.  
-
-```{r, message = F}
-# identity
-mod_id <- gls(
-  Yield ~ Block + Cultivar * Month * Year,
-  data = q2_long,
-)
-
-# compound symmetry
-mod_cs <- gls(
-  Yield ~ Block + Cultivar * Month * Year,
-  corr = corCompSymm(form = ~ 1 | Unit),
-  data = q2_long,
-)
-
-# diagonal
-mod_diag <- gls(
-  Yield ~ Block + Cultivar * Month * Year,
-  weights = varIdent(form = ~ 1 | Month),
-  data = q2_long,
-)
-
-# 1st order auto regressive
-mod_ar1 <- gls(
-  Yield ~ Block + Cultivar * Month * Year,
-  corr = corAR1(form = ~ 1 | Unit),
-  data = q2_long,
-)
-
-# unstructured
-mod_us <- gls(
-  Yield ~ Block + Cultivar * Month * Year,
-  corr = corSymm(form = ~ 1 | Unit),
-  weights = varIdent(form = ~ 1 | Month),
-  data = q2_long,
-)
-
-# comparing models
-anova(mod_id, mod_cs, mod_diag, mod_ar1, mod_us)
-```
-
-The simplest model (identity matrix) was the best.   
-
-Checking assumptions:   
-```{r}
-plot(mod_id$fitted, mod_id$residuals)
-```
-
-Seems we have homogeneous variance across fitted values.   
+As we have only two measurements the compound symmetry condition is met, but we still need to account for the possible 
+heterogeneity of variances in the year.   
 
 ```{r}
-shapiro.test(mod_id$residuals)
+ggplot(q2_long, aes(x = Year, y = Yield)) +
+  stat_boxplot(geom = 'errorbar') + 
+  geom_boxplot()
 ```
 
-We don't reject the hypothesis that the residuals are normally distributed.
+In general, the yield in 86 was higher than in 87.   
 
-Checking significance:   
+Let's do an inter-block analysis, where block is random.    
+We also put a diagonal matrix for `Year` to account for heterogeneous variances.   
 ```{r}
-anova(mod_id)
+mm <- lme(
+  fixed = Yield ~ Cultivar * Month, 
+  random = ~ 1 | Block,
+  weights = varIdent(form = ~ 1 | Year),
+  data = q2_long
+)
 ```
+
+Let's check some assumptions:
+```{r}
+plot(mm)
+```
+
+We have homogeneous variance across fitted values.   
+
+```{r}
+shapiro.test(residuals(mm, type = 'pearson'))
+```
+
+We don't reject the null hypothesis that the residuals are normally distributed, using a significance level of $\alpha = 0.05$.   
+
+```{r}
+anova(mm)
+```
+
 The `Cultivar` is significant, using a significance level of $\alpha = 0.05$. Which one performs the best?   
 
 ```{r}
-plot(emmeans::emmeans(mod_id, pairwise ~ Cultivar), comparisons = T, CI = F)
+emm <- emmeans::emmeans(mm, pairwise ~ Cultivar)
+plot(emm, comparisons = T, CI = F)
 ```
-Both cultivars 1 and 4 were better than 2, but there's no consensus which cultivar is the best although cultivar 4 has the largest predicted mean (black dot).    
-Note: the results could be misleading because the interactions `Cultivar:Year` and `Cultivar:Month:Year` are significant.  
+
+The `Cultivar` 4 performs the best, although it's slightly overlapping with `Cultivar` 1 (i.e. the difference between 4 and 1 is not significant).    
+```{r}
+as_tibble(emm$contrasts)[3, ]
+```
+
+Actually, the difference would be significant using an $\alpha = 0.10$ because p-value for the contrast `Cultivar1 - Cultivar4` is $0.0679$.    
 
 __3. One experiment was set up to assess possible phytotoxicity effects relating
 to an excessive persistence of herbicide residues in soil. The three crops
@@ -282,5 +262,12 @@ mod_strip <- aov(CropBiomass ~ Herbicide * Crop + Error(Block/(Herbicide * Crop)
 summary(mod_strip)
 ```
 
-Using a significance level of $\alpha = 0.05$, we can see that the `Crop` is significant, but `Herbicide` and the interaction between `Herbicide` and `Crop` are not.    
+Using a significance level of $\alpha = 0.05$, we can see that the `Crop` is significant, but `Herbicide` and the interaction between `Herbicide` and `Crop` are not.   
+
+We can also compare the cultivars' performances:   
+```{r}
+emmeans::emmeans(mod_strip, pairwise ~ Crop)$contrasts
+```
+
+The sunflower was better than rape, but sunflower is not different from soybean, using a significance level of $\alpha = 0.05$.   
 
