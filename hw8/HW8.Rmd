@@ -1,0 +1,23 @@
+---
+title: "Homework 8 - AGST 5014"
+date: "2023-04-18"
+output: pdf_document
+---
+
+
+__1. The following experiment comes from a central composite design 
+with 4 factors in 2 blocks. Conduct the proper analysis (including graphs, interpretation, etc). __ 
+
+```{r}
+q1 <- read.csv("HW8_Q1.csv")
+```
+
+__2. The design below presents the yield of different common bean cultivars.
+There was a variable stand count in each plot. Conduct the proper analysis.__ 
+
+```{r}
+q2 <- read.csv("HW8_Q2.csv")
+```
+
+__3. Design a proper experiment to identify the best dose of Nitrogen and
+amount of water to maximize yield (choose what values you would use). __ 
