@@ -5,23 +5,167 @@ date: "`r Sys.Date()`"
 output: pdf_document
 ---
 
-__1. The following experiment comes from a central composite design 
-with 4 factors in 2 blocks. Conduct the proper analysis (including graphs, interpretation, etc). __ 
+__1. The following experiment comes from a central composite design with 4 factors in 2 blocks. Conduct the proper analysis (including graphs, interpretation, etc). __ 
 
 ```{r}
 q1 <- read.csv("HW8_Q1.csv")
-q1$block <- as.factor(q1$block)
+q1 <- transform(q1, block = factor(block), logSD = NULL)
 str(q1)
 ```
 
-__2. The design below presents the yield of different common bean cultivars.
-There was a variable stand count in each plot. Conduct the proper analysis.__ 
+```{r}
+table(q1$block)
+```
+
+We have 18 experimental units for the factorial part, and 12 for the axial part.   
+
+Let's fit some Response Surface Methodology models.
+
+First, we can start with a simple first order model:
+```{r}
+library(rsm)
+
+mod1 <- rsm(ave ~ block + FO(x1, x2, x3, x4), data = q1)
+summary(mod1)
+```
+
+The lack of fit is significant (p-value $< 0.05$), so we should include more complex terms.  
+
+Now a second-order model:
+```{r}
+mod2 <- rsm(ave ~ block + SO(x1, x2, x3, x4), data = q1)
+summary(mod2)
+```
+
+There are positive and negatives eigenvalues, which means we have a saddle point.   
+The $\text{adj.} R^2 = 0.9078$, and the lack of fit is not significant, so we can stick with this model. 
+
+The optimal experimental points are:
+```{r}
+summary(mod2)$canonical$xs
+```
+
+
+```{r, fig.asp = 1.2}
+par(mfrow = c(3, 2))
+contour(
+  mod2,
+  ~ x1 + x2 + x3 + x4,
+  image = TRUE
+)
+```
+
+We have 6 plots because there are 4 two-way interactions (`x1:x2`, `x1:x3`, `x1:x4`, `x2:x3`, `x2:x4`, and `x3:x4`).   
+From the plots we can see that the maximum point reached lies roughly in the interval 380-390.   
+We can check the distribution of the fitted values:   
+```{r}
+summary(mod2$fitted.values)
+```
+
+The lowest point was 346.8, whereas the maximum point was 397.1.   
+
+Now we can run a steepest-ascent algorithm to search for a better solution:
+```{r}
+steep <- steepest(mod2)
+steep
+```
+
+The optimal solution points now are:
+```{r}
+opt_points <- steep[which.max(steep$yhat), ]
+opt_points
+```
+
+These are the new points we would use in the process to get the higher response values.      
+If we do predictions using these new coefficients, we get the maximum predicted response found by the steepest-ascent algorithm above:
+```{r}
+grid <- expand.grid(
+  block = unique(q1$block), 
+  x1 = opt_points$x1,
+  x2 = opt_points$x2,
+  x3 = opt_points$x3,
+  x4 = opt_points$x4
+)
+predict(mod2, grid)
+```
+
+As we have 2 blocks, the model did two predictions. The first matches with the steepest-ascent algorithm.   
+
+__2. The design below presents the yield of different common bean cultivars. There was a variable stand count in each plot. Conduct the proper analysis.__ 
 
 ```{r}
 q2 <- read.csv("HW8_Q2.csv")
-q2 <- transform(q2, block = as.factor(block), cv = as.factor(cv))
+q2 <- transform(q2, block = factor(block), cv = factor(cv))
 str(q2)
 ```
 
-__3. Design a proper experiment to identify the best dose of Nitrogen and
-amount of water to maximize yield (choose what values you would use). __ 
+```{r}
+table(q2$block)
+```
+
+The blocks are equally frequent.   
+
+The `stand` variable is a covariable, hence we can use ANCOVA to analyse the yield of different cultivars.    
+
+First step is to check whether `stand` is independent of the treatment `cv`.   
+```{r}
+check <- aov(stand ~ block + cv, data = q2)
+summary(check)
+```
+
+The `cv` is not significant, so we expect `stand` and `cv` to not be related.   
+
+Next, we run ANCOVA with interaction. For ANCOVA, we should use Type III sum of squares.   
+```{r}
+check_inter <- lm(
+  yield ~ block + cv * stand, 
+  contrasts = list(cv = contr.sum), 
+  data = q2
+)
+car::Anova(check_inter, type = 'III')
+```
+
+The interaction `cv:stand` is not significant, so we can go further and fit ANCOVA without the interaction: 
+```{r}
+ancova <- lm(
+  yield ~ block + cv + stand, 
+  contrasts = list(cv = contr.sum),
+  data = q2
+)
+car::Anova(ancova, type = 'III')
+```
+
+The `cv` is indeed significant, using a significance level of $\alpha = 0.05$.   
+
+Now let's check the usual ANOVA assumptions:
+```{r, fig.asp = 1.2}
+par(mfrow= c(2, 1))
+plot(ancova, which = 1)
+plot(ancova, which = 2)
+```
+
+We have homogeneous variance across the fitted values and the residuals seems to be normally distributed.
+
+Which cultivar was the best?
+```{r}
+plot(
+  emmeans::emmeans(ancova, pairwise ~ cv, adjust = 'tukey'), 
+  interval = F, comparisons = T
+)
+```
+
+We can see that cultivar `GBrilhante` had better performance than `CNFP8022`, but `GBrilhante` is not different from others.         
+
+__3. Design a proper experiment to identify the best dose of Nitrogen and amount of water to maximize yield (choose what values you would use). __
+
+Let's suppose there are 3 different doses of nitrogen and 2 different levels of water.   
+We can design a factorial CRD:   
+```{r}
+q3 <- expand.grid(
+  nitrogen = factor(c('10', '50', '150')), 
+  water = factor(c('0', '20'))
+)
+q3
+```
+
+
