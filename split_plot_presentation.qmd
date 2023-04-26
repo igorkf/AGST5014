@@ -1,0 +1,219 @@
+---
+title: "Split-plot Analysis"
+author: "Diego Della Lunga, Ashmita Upadhyay, Igor Kuivjogi Fernandes, Timothy Goodhart, Amanda Lay"
+date: "`r Sys.Date()`"
+format: beamer
+pdf-engine: xelatex
+monofont: LiberationMono
+monofontoptions:
+  - Scale = 0.7
+---
+
+```{r}
+knitr::opts_chunk$set(
+  echo = T
+  # cache = T
+)
+```
+
+## Introduction
+
+- Split-plot design (RCBD)
+- EDA
+- Linear Mixed Model
+- Mean Comparisons
+
+## Factors
+
+:::: {.columns}
+::: {.column width="50%"}
+### Whole-plot: Irrigation
+1. moist
+2. saturated
+3. flooded
+:::
+
+::: {.column width="50%"}
+### Sub-plot: Fertilizer
+1. 0 
+2. 50
+3. 100
+4. 150
+:::
+::::
+
+
+## Creating the design
+```{r}
+sp <- FielDHub::split_plot(
+  wp = 3,  # whole-plot
+  sp = 4,  # sub-plot
+  reps = 3,  # blocks
+  type = 2,  # for RCBD
+  seed = 2023
+)
+```
+
+## Field layout
+```{r, echo = F}
+plot(sp)
+```
+
+
+```{r, echo = F}
+split_plot<-sp$fieldBook
+split_plot$irrigation<-NA
+split_plot$irrigation[split_plot$WHOLE_PLOT==3]<-"flooded"
+split_plot$irrigation[split_plot$WHOLE_PLOT==2]<-"saturated"
+split_plot$irrigation[split_plot$WHOLE_PLOT==1]<-"moist"
+split_plot$irrigation<-factor(split_plot$irrigation, levels=c("moist", "saturated", "flooded"))
+split_plot$fertilizer<-NA
+split_plot$fertilizer[split_plot$SUB_PLOT==4]<-"0"
+split_plot$fertilizer[split_plot$SUB_PLOT==3]<-"50"
+split_plot$fertilizer[split_plot$SUB_PLOT==2]<-"100"
+split_plot$fertilizer[split_plot$SUB_PLOT==1]<-"150"
+split_plot$fertilizer<-factor(split_plot$fertilizer, levels=c("0","50", "100", "150"))
+```
+
+## Simulating effects of treatments
+```{r}
+# effect of irrigation
+split_plot$y_irr <- NA
+split_plot$y_irr[split_plot$irrigation == "flooded"] <- 6
+split_plot$y_irr[split_plot$irrigation == "saturated"] <- 12
+split_plot$y_irr[split_plot$irrigation == "moist"] <- 15
+
+# effect of fertilizer
+split_plot$y_fert <- NA
+split_plot$y_fert[split_plot$fertilizer == "0"] <- 5
+split_plot$y_fert[split_plot$fertilizer == "50"] <- 8
+split_plot$y_fert[split_plot$fertilizer == "100"] <- 10
+split_plot$y_fert[split_plot$fertilizer == "150"] <- 12
+
+# effect of interaction
+split_plot$y_inter <- (
+  split_plot$y_irr * split_plot$y_fert
+) * 0.01
+```
+
+## Simulating effects of blocks and error
+```{r}
+# effect of block
+split_plot$y_b <- NA
+split_plot$y_b[split_plot$REP == 1] <- -10
+split_plot$y_b[split_plot$REP == 2] <- 5
+split_plot$y_b[split_plot$REP == 3] <- -5
+split_plot$y_b[split_plot$REP == 4] <- -10
+
+# effect of error
+set.seed(2023)
+split_plot$error <- rnorm(36, 0, 2.5)
+
+# creating response
+split_plot$y <- (
+  split_plot$y_irr + split_plot$y_fert + 
+  split_plot$y_inter + split_plot$error + split_plot$y_b
+)
+```
+
+
+```{r, echo = F}
+# just putting block as factor
+split_plot$block <- as.factor(split_plot$REP)
+```
+
+## EDA
+```{r}
+with(split_plot, table(block))
+with(split_plot, table(irrigation))
+with(split_plot, table(fertilizer))
+```
+
+## EDA
+```{r}
+with(split_plot, addmargins(table(irrigation, fertilizer)))
+```
+
+## EDA
+```{r}
+hist(split_plot$y, main = 'Histogram', xlab = 'yield')
+```
+
+## EDA
+```{r}
+boxplot(y ~ irrigation, data = split_plot, ylab = 'yield')
+```
+
+## EDA
+```{r}
+boxplot(y ~ fertilizer, data = split_plot, ylab = 'yield')
+```
+
+## EDA
+```{r, fig.asp = 0.6}
+with(split_plot, interaction.plot(x.factor = irrigation,
+                                  trace.factor = fertilizer,
+                                  response = y))
+```
+
+## Model
+```{r}
+mod.lme <- nlme::lme(
+  y ~ irrigation * fertilizer,
+  random = ~1 | block/irrigation, 
+  data = split_plot
+)
+res <- residuals(mod.lme, type = 'pearson')
+anova(mod.lme)
+```
+
+## Model diagnostics
+```{r, fig.asp = 0.6}
+stripchart(res ~ mod.lme$data$irrigation, vertical = T, pch = 1,
+           xlab = 'irrigation', ylab = 'Residuals')
+abline(h = 0, lty = 2, col = 'grey')
+```
+
+## Model diagnostics
+```{r, fig.asp = 0.6}
+stripchart(res ~ mod.lme$data$fertilizer, vertical = T, pch = 1,
+           xlab = 'fertilizer', ylab = 'Residuals')
+abline(h = 0, lty = 2, col = 'grey')
+```
+
+
+## Model diagnostics
+```{r, fig.asp = 0.6}
+plot(res ~ fitted(mod.lme), main = 'Residuals VS Fitted', 
+     xlab = 'Fitted', ylab = 'Residuals')
+abline(h = 0, lty = 2, col = 'grey')
+```
+
+## Model diagnostics
+```{r, fig.asp = 0.6}
+qqnorm(res, main = 'Normal Q-Q')
+qqline(res, lty = 2, col = 'grey')
+```
+
+## Model diagnostics
+```{r, fig.asp = 0.6}
+plot(res ~ split_plot$ID, main = 'Residuals VS Exp. Units', 
+     xlab = 'Experimental Unit', ylab = 'Residuals')
+abline(h = 0, lty = 2, col = 'grey')
+```
+
+
+<!-- # boxplot.stats(split_plot$y) -->
+<!-- # fixef(mod.lme) -->
+<!-- # ranef(mod.lme) -->
+<!-- # library(emmeans) -->
+<!-- # means_irrigation<-emmeans(mod.lme, pairwise~irrigation, adjust="Tukey") -->
+<!-- # means_irrigation -->
+<!-- # plot(means_irrigation, interval=F, comparisons=T) -->
+<!-- # means_fertilizer<-emmeans(mod.lme, pairwise~fertilizer, adjust="Tukey") -->
+<!-- # means_fertilizer -->
+<!-- # plot(means_fertilizer, interval=F, comparisons=T) -->
+
+
+
+
