@@ -13,12 +13,6 @@ q1 <- transform(q1, block = factor(block), logSD = NULL)
 str(q1)
 ```
 
-```{r}
-table(q1$block)
-```
-
-We have 18 experimental units for the factorial points, and 12 for the axial points.   
-
 Let's fit some Response Surface Methodology models.
 
 First, we can start with a simple first order model:
