@@ -3,17 +3,25 @@ title: "Split-plot Analysis"
 author: "Diego Della Lunga, Ashmita Upadhyay, Igor Kuivjogi Fernandes, Timothy Goodhart, Amanda Lay"
 date: "`r Sys.Date()`"
 format: beamer
+header-includes:
+ - \apptocmd{\tightlist}{\setlength{\itemsep}{10pt}}{}{}
+institute: University of Arkansas
 pdf-engine: xelatex
 monofont: LiberationMono
 monofontoptions:
   - Scale = 0.7
 ---
 
-```{r}
+```{r, echo = F}
+# chunks configurations
 knitr::opts_chunk$set(
   echo = T
   # cache = T
 )
+
+# ggplot2 custom theme
+theme_custom <- ggthemes::theme_base() + ggplot2::theme(plot.background = ggplot2::element_blank())
+ggplot2::theme_set(theme_custom)
 ```
 
 ## Introduction
@@ -21,7 +29,7 @@ knitr::opts_chunk$set(
 - Split-plot design (RCBD)
 - EDA
 - Linear Mixed Model
-- Mean Comparisons
+- Means Comparison
 
 ## Factors
 
@@ -112,7 +120,7 @@ split_plot$error <- rnorm(36, 0, 2.5)
 # creating response
 split_plot$y <- (
   split_plot$y_irr + split_plot$y_fert + 
-  split_plot$y_inter + split_plot$error + split_plot$y_b
+  split_plot$y_inter + split_plot$y_b + split_plot$error
 )
 ```
 
@@ -156,11 +164,12 @@ with(split_plot, interaction.plot(x.factor = irrigation,
                                   response = y))
 ```
 
+
 ## Model
 ```{r}
 mod.lme <- nlme::lme(
   y ~ irrigation * fertilizer,
-  random = ~1 | block/irrigation, 
+  random = ~1|block/irrigation, 
   data = split_plot
 )
 res <- residuals(mod.lme, type = 'pearson')
@@ -168,16 +177,18 @@ anova(mod.lme)
 ```
 
 ## Model diagnostics
-```{r, fig.asp = 0.6}
+```{r, fig.asp = 0.55}
 stripchart(res ~ mod.lme$data$irrigation, vertical = T, pch = 1,
-           xlab = 'irrigation', ylab = 'Residuals')
+           xlab = 'irrigation', ylab = 'Residuals',
+           main = 'Residuals VS Factor levels')
 abline(h = 0, lty = 2, col = 'grey')
 ```
 
 ## Model diagnostics
-```{r, fig.asp = 0.6}
+```{r, fig.asp = 0.55}
 stripchart(res ~ mod.lme$data$fertilizer, vertical = T, pch = 1,
-           xlab = 'fertilizer', ylab = 'Residuals')
+           xlab = 'fertilizer', ylab = 'Residuals',
+           main = 'Residuals VS Factor levels')
 abline(h = 0, lty = 2, col = 'grey')
 ```
 
@@ -202,17 +213,19 @@ plot(res ~ split_plot$ID, main = 'Residuals VS Exp. Units',
 abline(h = 0, lty = 2, col = 'grey')
 ```
 
+## Means comparision
+```{r, message = F, fig.asp = 0.6}
+emm.irr <- emmeans::emmeans(mod.lme, pairwise ~ irrigation, 
+                            adjust = "Tukey")
+plot(emm.irr, interval = F, comparisons = T)
+```
 
-<!-- # boxplot.stats(split_plot$y) -->
-<!-- # fixef(mod.lme) -->
-<!-- # ranef(mod.lme) -->
-<!-- # library(emmeans) -->
-<!-- # means_irrigation<-emmeans(mod.lme, pairwise~irrigation, adjust="Tukey") -->
-<!-- # means_irrigation -->
-<!-- # plot(means_irrigation, interval=F, comparisons=T) -->
-<!-- # means_fertilizer<-emmeans(mod.lme, pairwise~fertilizer, adjust="Tukey") -->
-<!-- # means_fertilizer -->
-<!-- # plot(means_fertilizer, interval=F, comparisons=T) -->
+## Means comparisions
+```{r, message = F, fig.asp = 0.6}
+emm.fert <- emmeans::emmeans(mod.lme, pairwise ~ fertilizer, 
+                             adjust = "Tukey")
+plot(emm.fert, interval = F, comparisons = T)
+```
 
 
 
